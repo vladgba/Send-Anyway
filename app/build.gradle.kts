@@ -5,6 +5,9 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+// Shared versioning (version.properties) + release signing, see gradle/android-common.gradle
+apply(from = rootProject.file("gradle/android-common.gradle"))
+
 android {
     namespace = "x.vladgba.sendanyway"
     compileSdk = 35
@@ -13,8 +16,6 @@ android {
         applicationId = "x.vladgba.sendanyway"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
     }
 
     buildTypes {
