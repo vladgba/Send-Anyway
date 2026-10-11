@@ -17,8 +17,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
 
 /**
- * Classic Bluetooth (RFCOMM) transport. Works on every Android version and is usually much
- * faster than BLE, but the receiver has to *find* the sender first: apps can't read their own
+ * Bluetooth (RFCOMM) transport. Works on every Android version and is usually
+ * fast (often 100-200 KB/s), but the receiver has to *find* the sender first: apps can't read their own
  * MAC address, so the sender becomes discoverable (system prompt) and the receiver runs a
  * classic discovery scan, trying nearby phones strongest-signal first. Only the sender listens
  * on this session's service UUID, so connecting to any other phone fails fast at the SDP lookup.
@@ -35,7 +35,7 @@ object Classic {
 
     /** RFCOMM is a plain stream; 16 KB frames keep progress smooth with little overhead. */
     internal fun link(socket: BluetoothSocket): Link =
-        Link(TRANSPORT_RFCOMM, socket.inputStream, socket.outputStream, socket, chunk = 16 * 1024)
+        Link(TRANSPORT_BT, socket.inputStream, socket.outputStream, socket, chunk = 16 * 1024)
 }
 
 /** Sender side: listens on the session's RFCOMM service UUID. */
@@ -45,8 +45,8 @@ class ClassicServer(private val ctx: Context, private val uuid: UUID, private va
 
     /** Returns false if Bluetooth is off or not permitted. */
     fun start(): Boolean {
-        if (!Ble.hasPermissions(ctx, server = true)) return false
-        val adapter = Ble.adapter(ctx) ?: return false
+        if (!Bluetooth.hasPermissions(ctx, server = true)) return false
+        val adapter = Bluetooth.adapter(ctx) ?: return false
         return try {
             val ss = adapter.listenUsingInsecureRfcommWithServiceRecord("Send Anyway", uuid)
             server = ss
@@ -97,8 +97,8 @@ class ClassicClient(private val ctx: Context, private val uuid: UUID, private va
     }
 
     fun start(): Boolean {
-        if (!Ble.hasPermissions(ctx, server = false)) return false
-        val a = Ble.adapter(ctx) ?: return false
+        if (!Bluetooth.hasPermissions(ctx, server = false)) return false
+        val a = Bluetooth.adapter(ctx) ?: return false
         adapter = a
         val filter = IntentFilter().apply {
             addAction(BluetoothDevice.ACTION_FOUND)

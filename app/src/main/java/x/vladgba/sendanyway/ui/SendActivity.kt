@@ -28,9 +28,9 @@ import x.vladgba.sendanyway.core.TransferListener
 import x.vladgba.sendanyway.core.knownTotal
 import x.vladgba.sendanyway.data.Device
 import x.vladgba.sendanyway.data.UriItem
+import x.vladgba.sendanyway.service.TransferService
 import x.vladgba.sendanyway.qr.QrRender
-import x.vladgba.sendanyway.transport.Ble
-import x.vladgba.sendanyway.transport.BleServer
+import x.vladgba.sendanyway.transport.Bluetooth
 import x.vladgba.sendanyway.transport.Classic
 import x.vladgba.sendanyway.transport.ClassicServer
 import x.vladgba.sendanyway.transport.Lan
@@ -64,11 +64,11 @@ class SendActivity : Activity() {
     private lateinit var speedLabel: TextView
     private lateinit var speed: SeekBar
 
+    private val app by lazy { applicationContext }
     private var sessionId: ByteArray? = null
     private var key: ByteArray? = null
     private var pairingQr: ByteArray? = null
     private var basePairing: Pairing? = null
-    private var bt = false
     private var classic = false
     private var discoverable = false
     private var classicServer: ClassicServer? = null
@@ -77,7 +77,6 @@ class SendActivity : Activity() {
     private lateinit var btnDirect: Button
     private lateinit var directView: TextView
     private var lan: LanServer? = null
-    private var ble: BleServer? = null
     private val claimed = AtomicBoolean(false)
     @Volatile private var activeLink: Link? = null
     @Volatile private var closed = false
@@ -142,7 +141,7 @@ class SendActivity : Activity() {
         if (WifiDirect.supported(this)) btnDirect.setOnClickListener { onWifiDirectButton() } else btnDirect.visibility = View.GONE
         qrScreenMode(true)
 
-        val missing = missingPermissions(Ble.permissions(server = true))
+        val missing = missingPermissions(Bluetooth.permissions(server = true) + notificationPermission())
         if (missing.isNotEmpty()) requestPermissions(missing, REQ_PERMS) else startSession()
     }
 
@@ -172,8 +171,13 @@ class SendActivity : Activity() {
         super.onDestroy()
         closed = true
         mainHandler.removeCallbacks(tick)
-        watchdog?.stop()
         stopListeners()
+        if (claimed.get() && TransferService.isActive) {
+            // A transfer is running: let it finish in the background (foreground service).
+            // The stall watchdog stays armed; the Wi-Fi Direct group is removed when the app process ends.
+            return
+        }
+        watchdog?.stop()
         activeLink?.close()
         directHost?.stop()
     }
@@ -186,12 +190,7 @@ class SendActivity : Activity() {
         sessionId = id
         key = k
         lan = try { LanServer(::onLink).also { it.start() } } catch (e: IOException) { null }
-        if (Ble.supported) {
-            val server = BleServer(this, id.copyOf(4), ::onLink)
-            bt = server.start()
-            if (bt) ble = server
-        }
-        val base = Pairing(id, k, myName, lan?.port ?: 0, emptyList(), bt)
+        val base = Pairing(id, k, myName, lan?.port ?: 0, emptyList(), bluetooth = false)
         val rfcomm = ClassicServer(this, base.rfcommUuid, ::onLink)
         classic = rfcomm.start()
         if (classic) {
@@ -202,7 +201,7 @@ class SendActivity : Activity() {
                 startActivityForResult(Classic.discoverableIntent(), REQ_DISCOVERABLE)
             } catch (_: Exception) {}
         }
-        basePairing = Pairing(id, k, myName, lan?.port ?: 0, emptyList(), bt, null, classic)
+        basePairing = Pairing(id, k, myName, lan?.port ?: 0, emptyList(), bluetooth = classic)
         refreshPairing()
     }
 
@@ -215,10 +214,9 @@ class SendActivity : Activity() {
         val parts = ArrayList<String>()
         if (addrs.isNotEmpty()) parts += getString(R.string.channel_lan, addrs.joinToString { it.hostAddress ?: "" })
         if (wifiGroup != null) parts += getString(R.string.channel_wifi_direct)
-        if (bt) parts += getString(R.string.channel_bt)
         if (classic) parts += getString(if (discoverable) R.string.channel_classic else R.string.channel_classic_hidden)
         var text = getString(R.string.channels, parts.joinToString(" · ").ifEmpty { getString(R.string.channel_none) })
-        if (!bt && !classic) text += "\n" + getString(R.string.bt_unavailable)
+        if (!classic) text += "\n" + getString(R.string.bt_unavailable)
         channels.text = text
         if (!slideshow && !claimed.get()) showPairing()
     }
@@ -290,17 +288,24 @@ class SendActivity : Activity() {
                 mine = true
                 activeLink = link
                 stopListeners()
+                // Open every file now, while this screen still holds read access to them.
+                items.forEach { (it as? UriItem)?.preopen() }
                 ui { onConnected(peer, link) }
                 val throttle = Throttle()
                 Protocol.send(ch, myName, items, object : TransferListener {
                     override fun onProgress(done: Long, total: Long) {
                         meter.update(done)
+                        TransferService.progress(app, done, total, app.getString(R.string.sending_progress, formatSize(done), formatSize(total), meter.speed()))
                         if (throttle.ready(done == total)) ui { showProgress(done, total) }
                     }
                 }, chunk = link.chunk)
+                TransferService.end(app, app.getString(R.string.notif_sent), app.getString(R.string.done_sent, peer))
                 ui { onDone(peer) }
             } catch (e: Exception) {
-                if (mine) ui { onFailed(e) }
+                if (mine) {
+                    TransferService.end(app, app.getString(R.string.notif_failed), e.message ?: e.javaClass.simpleName)
+                    ui { onFailed(e) }
+                }
             } finally {
                 link.close()
             }
@@ -309,12 +314,12 @@ class SendActivity : Activity() {
 
     private fun stopListeners() {
         lan?.stop()
-        ble?.stop()
         classicServer?.stop()
     }
 
     private fun onConnected(peer: String, link: Link) {
         if (closed) return
+        TransferService.begin(this, getString(R.string.notif_sending, peer), getString(R.string.connected_to, peer, link.transport), link)
         meter = TransferMeter()
         watchdog = StallWatchdog(meter, STALL_LIMIT_MS) {
             stalled = true

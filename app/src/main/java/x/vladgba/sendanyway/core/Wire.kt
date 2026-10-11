@@ -14,7 +14,7 @@ object Wire {
     const val MAGIC: Int = 0xA5
     const val TYPE_PAIRING: Int = 0x01
     const val TYPE_QR_DATA: Int = 0x02
-    const val VERSION: Int = 2  // 2: ACK flow control
+    const val VERSION: Int = 3  // 2: ACK flow control, 3: Bluetooth = RFCOMM only
 
     /** Returns the QR payload type, or -1 if this is not one of our codes. */
     fun typeOf(bytes: ByteArray): Int =

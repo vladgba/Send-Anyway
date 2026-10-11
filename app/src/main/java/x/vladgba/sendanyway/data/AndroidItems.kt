@@ -45,7 +45,19 @@ class UriItem(private val resolver: ContentResolver, private val uri: Uri) : Out
         )
     }
 
-    override fun open(): InputStream = resolver.openInputStream(uri) ?: throw IOException("cannot open $uri")
+    @Volatile private var opened: InputStream? = null
+
+    /**
+     * Opens the file now. Read access to shared URIs can end when the sending screen is closed;
+     * a stream opened while access was granted stays readable, so the transfer can continue in
+     * the background.
+     */
+    fun preopen() {
+        if (opened == null) opened = resolver.openInputStream(uri) ?: throw IOException("cannot open $uri")
+    }
+
+    override fun open(): InputStream =
+        opened?.also { opened = null } ?: resolver.openInputStream(uri) ?: throw IOException("cannot open $uri")
 }
 
 object Device {

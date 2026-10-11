@@ -28,8 +28,8 @@ import x.vladgba.sendanyway.core.Wire
 import x.vladgba.sendanyway.data.Device
 import x.vladgba.sendanyway.data.DownloadSink
 import x.vladgba.sendanyway.qr.QrScanner
-import x.vladgba.sendanyway.transport.Ble
-import x.vladgba.sendanyway.transport.BleClient
+import x.vladgba.sendanyway.service.TransferService
+import x.vladgba.sendanyway.transport.Bluetooth
 import x.vladgba.sendanyway.transport.ClassicClient
 import x.vladgba.sendanyway.transport.LanClient
 import x.vladgba.sendanyway.transport.Link
@@ -52,12 +52,12 @@ class ReceiveActivity : Activity() {
     private lateinit var progress: ProgressBar
     private lateinit var results: LinearLayout
     private lateinit var myName: String
+    private val app by lazy { applicationContext }
 
     private var scanner: QrScanner? = null
     private var cameraAllowed = false
     private var pairing: Pairing? = null
     private var lanClient: LanClient? = null
-    private var bleClient: BleClient? = null
     private var classicClient: ClassicClient? = null
     private var directClient: WifiDirectClient? = null
     private var wifiWatcher: WifiWatcher? = null
@@ -98,8 +98,9 @@ class ReceiveActivity : Activity() {
         myName = Device.name(this)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        val wanted = (arrayOf(Manifest.permission.CAMERA) + Ble.permissions(server = false) +
-            (if (WifiDirect.supported(this)) WifiDirect.permissions() else emptyArray())).distinct().toTypedArray()
+        val wanted = (arrayOf(Manifest.permission.CAMERA) + Bluetooth.permissions(server = false) +
+            (if (WifiDirect.supported(this)) WifiDirect.permissions() else emptyArray()) +
+            notificationPermission()).distinct().toTypedArray()
         val missing = missingPermissions(wanted)
         if (missing.isEmpty()) onCameraAllowed() else requestPermissions(missing, REQ_PERMS)
     }
@@ -139,9 +140,10 @@ class ReceiveActivity : Activity() {
         super.onDestroy()
         closed = true
         mainHandler.removeCallbacks(connectTimeout)
-        watchdog?.stop()
         scanner?.stop()
-        stopClients()
+        stopClients() // a Wi-Fi Direct group carrying the active link stays up until that link closes
+        if (transferring && TransferService.isActive) return // keep going in the background
+        watchdog?.stop()
         activeLink?.close()
     }
 
@@ -240,20 +242,14 @@ class ReceiveActivity : Activity() {
         }
     }
 
-    /** BLE and classic Bluetooth in parallel; the first authenticated link wins. */
     private fun startBluetooth(p: Pairing) {
-        if (p.classic && classicClient == null) {
-            val c = ClassicClient(this, p.rfcommUuid) { onLink(p, it) }
-            if (c.start()) classicClient = c
-        }
-        if (bleClient != null || !p.bluetooth || !Ble.supported) return
-        val c = BleClient(this, p.bleTag) { onLink(p, it) }
-        if (c.start()) bleClient = c
+        if (!p.bluetooth || classicClient != null) return
+        val c = ClassicClient(this, p.rfcommUuid) { onLink(p, it) }
+        if (c.start()) classicClient = c
     }
 
     private fun stopClients() {
         lanClient?.stop(); lanClient = null
-        bleClient?.stop(); bleClient = null
         classicClient?.stop(); classicClient = null
         directClient?.stop(); directClient = null
         wifiWatcher?.stop(); wifiWatcher = null
@@ -278,12 +274,17 @@ class ReceiveActivity : Activity() {
                 Protocol.receive(ch, offer, sink(), object : TransferListener {
                     override fun onProgress(done: Long, total: Long) {
                         meter.update(done)
+                        TransferService.progress(app, done, total, app.getString(R.string.receiving_progress, formatSize(done), formatSize(total), meter.speed()))
                         if (throttle.ready(done == total)) ui { showProgress(done, total) }
                     }
                 })
+                TransferService.end(app, app.getString(R.string.notif_received), app.getString(R.string.notif_received_text, offer.items.size, offer.peerName))
                 ui { onFinished(null) }
             } catch (e: Exception) {
-                if (mine) ui { onFinished(e) }
+                if (mine) {
+                    TransferService.end(app, app.getString(R.string.notif_failed), e.message ?: e.javaClass.simpleName)
+                    ui { onFinished(e) }
+                }
             } finally {
                 link.close()
             }
@@ -292,6 +293,7 @@ class ReceiveActivity : Activity() {
 
     private fun onConnected(count: Int, peer: String, link: Link) {
         if (closed) return
+        TransferService.begin(this, getString(R.string.notif_receiving, peer), getString(R.string.receiving_from, count, peer, link.transport), link)
         transferring = true
         stalled = false
         btnWifi.visibility = View.GONE

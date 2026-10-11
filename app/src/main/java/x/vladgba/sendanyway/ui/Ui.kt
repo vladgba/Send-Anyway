@@ -105,3 +105,7 @@ internal fun Activity.copySecret(label: String, text: String) {
         android.widget.Toast.makeText(this, x.vladgba.sendanyway.R.string.password_copied, android.widget.Toast.LENGTH_SHORT).show()
     }
 }
+
+/** Needed on Android 13+ to show the transfer progress notification (the transfer works without it). */
+internal fun notificationPermission(): Array<String> =
+    if (android.os.Build.VERSION.SDK_INT >= 33) arrayOf(android.Manifest.permission.POST_NOTIFICATIONS) else emptyArray()

@@ -45,10 +45,7 @@ class CoreTest {
         assertTrue(d.bluetooth)
         assertTrue(bytes.size < 120)
         assertNull(d.wifiGroup)
-        assertTrue(!d.classic)
-        val c = Pairing.decode(Pairing(id, key, "x", 0, emptyList(), false, null, classic = true).encode())!!
-        assertTrue(c.classic)
-        assertEquals(p.rfcommUuid, c.rfcommUuid.let { Pairing(id, key, "", 0, emptyList(), false).rfcommUuid })
+        assertEquals(p.rfcommUuid, Pairing(id, key, "", 0, emptyList(), false).rfcommUuid)
         val h = Pairing.decode(p.withWifiGroup(Pairing.WifiGroup("DIRECT-ab-SendAnyway", "pass word 123"), p.lanAddresses).encode())!!
         assertEquals("DIRECT-ab-SendAnyway", h.wifiGroup!!.networkName)
         assertEquals("pass word 123", h.wifiGroup!!.passphrase)

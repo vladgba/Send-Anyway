@@ -23,7 +23,7 @@ class Link(
     private val resource: Closeable,
     /** DATA payload size that suits this link (see Protocol.send). */
     val chunk: Int = Protocol.DEFAULT_CHUNK,
-    /** Extra info for the status line, e.g. Bluetooth packet size. */
+    /** Extra info for the status line. */
     val detail: String = "",
 ) : Closeable {
     override fun close() {
@@ -32,8 +32,7 @@ class Link(
 }
 
 const val TRANSPORT_LAN = "Wi-Fi/LAN"
-const val TRANSPORT_BT = "Bluetooth LE"
-const val TRANSPORT_RFCOMM = "Bluetooth classic"
+const val TRANSPORT_BT = "Bluetooth"
 const val TRANSPORT_WIFI_DIRECT = "Wi-Fi Direct"
 const val TRANSPORT_WIFI = "Wi-Fi"
 

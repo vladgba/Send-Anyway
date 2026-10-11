@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Send Anyway</string>
+    <string name="notif_channel">Transfers</string>
+    <string name="notif_sending">Sending to %1$s</string>
+    <string name="notif_receiving">Receiving from %1$s</string>
+    <string name="notif_sent">Sent</string>
+    <string name="notif_received">Received</string>
+    <string name="notif_received_text">%1$d item(s) from %2$s, saved to Download/SendAnyway</string>
+    <string name="notif_failed">Transfer failed</string>
     <string name="tagline">Pair with a QR code, then send over Wi-Fi/LAN or Bluetooth. If nothing else works, the data goes through a QR slideshow.</string>
     <string name="send_files">Send files</string>
     <string name="send_text">Send text</string>
@@ -15,9 +22,8 @@
     <string name="scan_this">Scan this code with Send Anyway on the other device</string>
     <string name="channels">Channels: %1$s</string>
     <string name="channel_lan">Wi-Fi/LAN %1$s</string>
-    <string name="channel_bt">Bluetooth LE</string>
-    <string name="channel_classic">Bluetooth classic</string>
-    <string name="channel_classic_hidden">Bluetooth classic (not visible: only phones paired before can find it)</string>
+    <string name="channel_classic">Bluetooth</string>
+    <string name="channel_classic_hidden">Bluetooth (not visible: only phones paired before can find it)</string>
     <string name="channel_wifi_direct">Wi-Fi Direct</string>
     <string name="start_wifi_direct">Start Wi-Fi Direct</string>
     <string name="stop_wifi_direct">Stop Wi-Fi Direct</string>
