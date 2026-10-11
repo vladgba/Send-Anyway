@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- No AndroidX on purpose (no-big-libraries rule), so the framework @TargetApi is used. -->
+    <issue id="UseRequiresApi" severity="ignore" />
+    <!-- English-only for now; switch to <plurals> when translations are added. -->
+    <issue id="PluralsCandidate" severity="ignore" />
+    <!-- Backup is disabled; nothing to extract. -->
+    <issue id="DataExtractionRules" severity="ignore" />
+</lint>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    android:gravity="center_vertical"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        style="@style/Title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/app_name" />
+
+    <TextView
+        style="@style/Body"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="24dp"
+        android:text="@string/tagline" />
+
+    <Button
+        android:id="@+id/btnSendFiles"
+        style="@style/BigButton"
+        android:text="@string/send_files" />
+
+    <Button
+        android:id="@+id/btnSendText"
+        style="@style/BigButton"
+        android:text="@string/send_text" />
+
+    <Button
+        android:id="@+id/btnReceive"
+        style="@style/BigButton"
+        android:text="@string/receive" />
+</LinearLayout>

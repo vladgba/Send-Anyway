@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            style="@style/Title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/send_title" />
+
+        <TextView
+            android:id="@+id/summary"
+            style="@style/Body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp" />
+
+        <ImageView
+            android:id="@+id/qr"
+            android:layout_width="match_parent"
+            android:layout_height="300dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="16dp"
+            android:background="#FFFFFF"
+            android:padding="6dp"
+            android:contentDescription="@string/scan_this"
+            android:scaleType="fitCenter" />
+
+        <TextView
+            android:id="@+id/status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:textColor="@color/fg"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/channels"
+            style="@style/Body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp" />
+
+        <ProgressBar
+            android:id="@+id/progress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:max="1000"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:id="@+id/slideshowControls"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/frameSizeLabel"
+                style="@style/Body"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp" />
+
+            <SeekBar
+                android:id="@+id/frameSize"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <TextView
+                android:id="@+id/speedLabel"
+                style="@style/Body"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp" />
+
+            <SeekBar
+                android:id="@+id/speed"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/wifiDirectInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@color/card"
+            android:padding="12dp"
+            android:textColor="@color/fg"
+            android:textSize="15sp"
+            android:fontFamily="monospace"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/btnWifiDirect"
+            style="@style/BigButton"
+            android:text="@string/start_wifi_direct" />
+
+        <Button
+            android:id="@+id/btnMode"
+            style="@style/BigButton"
+            android:text="@string/use_qr_slideshow" />
+
+        <Button
+            android:id="@+id/btnRetry"
+            style="@style/BigButton"
+            android:text="@string/retry"
+            android:visibility="gone" />
+    </LinearLayout>
+</ScrollView>

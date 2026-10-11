@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="accent">#2E6BE6</color>
+    <color name="bg">#FFFFFF</color>
+    <color name="fg">#1B1F24</color>
+    <color name="muted">#5F6B7A</color>
+    <color name="card">#F1F4F8</color>
+
+    <style name="AppTheme" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:colorAccent">@color/accent</item>
+        <item name="android:colorPrimary">@color/accent</item>
+        <item name="android:windowBackground">@color/bg</item>
+        <item name="android:textColorPrimary">@color/fg</item>
+        <item name="android:textColorSecondary">@color/muted</item>
+        <item name="android:statusBarColor">@color/bg</item>
+        <item name="android:navigationBarColor">@color/bg</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+
+    <style name="Title">
+        <item name="android:textSize">26sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/fg</item>
+    </style>
+
+    <style name="Body">
+        <item name="android:textSize">15sp</item>
+        <item name="android:textColor">@color/muted</item>
+    </style>
+
+    <style name="BigButton" parent="android:Widget.Material.Button.Colored">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">64dp</item>
+        <item name="android:textSize">17sp</item>
+        <item name="android:layout_marginTop">12dp</item>
+    </style>
+</resources>

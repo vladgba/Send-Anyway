@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- QR finder corner + paper plane -->
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M32,32h18v18h-18z M36,36v10h10v-10z" android:fillType="evenOdd"/>
+    <path android:fillColor="#FFFFFF" android:pathData="M39,39h4v4h-4z"/>
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M42,70 L78,52 L52,62 L54,76 L60,66 L70,74 Z"/>
+</vector>
