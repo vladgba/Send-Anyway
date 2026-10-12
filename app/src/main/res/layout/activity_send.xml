@@ -1,144 +1,236 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true">
+    android:fitsSystemWindows="true"
+    android:orientation="vertical">
 
+    <!-- Top bar -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="20dp">
+        android:layout_height="64dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="4dp"
+        android:paddingEnd="16dp">
 
-        <TextView
-            style="@style/Title"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/send_title" />
-
-        <TextView
-            android:id="@+id/summary"
-            style="@style/Body"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp" />
+        <ImageButton
+            android:id="@+id/btnBack"
+            style="@style/IconButton"
+            android:contentDescription="@string/back"
+            android:src="@drawable/ic_arrow_back" />
 
         <LinearLayout
-            android:id="@+id/itemsContainer"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginTop="6dp">
+            android:layout_marginStart="4dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
 
-            <Button
-                android:id="@+id/btnAddMore"
-                style="?android:attr/borderlessButtonStyle"
+            <TextView
+                style="@style/Text.TitleSmall"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/add_more_files"
-                android:textColor="@color/fg"
-                android:textSize="13sp" />
+                android:text="@string/send_title"
+                android:textSize="20sp" />
 
-            <LinearLayout
-                android:id="@+id/itemsList"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical" />
+            <TextView
+                android:id="@+id/summary"
+                style="@style/Text.Caption"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
         </LinearLayout>
+    </LinearLayout>
 
-        <ImageView
-            android:id="@+id/qr"
-            android:layout_width="match_parent"
-            android:layout_height="300dp"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginTop="16dp"
-            android:background="#FFFFFF"
-            android:padding="6dp"
-            android:contentDescription="@string/scan_this"
-            android:scaleType="fitCenter" />
-
-        <TextView
-            android:id="@+id/status"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:textColor="@color/fg"
-            android:textSize="16sp" />
-
-        <TextView
-            android:id="@+id/channels"
-            style="@style/Body"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp" />
-
-        <ProgressBar
-            android:id="@+id/progress"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:max="1000"
-            android:visibility="gone" />
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:overScrollMode="ifContentScrolls">
 
         <LinearLayout
-            android:id="@+id/slideshowControls"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:visibility="gone">
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="24dp">
 
+            <!-- Main card: pairing QR / slideshow, then live status -->
+            <LinearLayout
+                style="@style/Card"
+                android:layout_marginTop="4dp"
+                android:animateLayoutChanges="true"
+                android:gravity="center_horizontal">
+
+                <ImageView
+                    android:id="@+id/statusIcon"
+                    style="@style/IconBadge"
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="8dp"
+                    android:importantForAccessibility="no"
+                    android:padding="16dp"
+                    android:visibility="gone" />
+
+                <ImageView
+                    android:id="@+id/qr"
+                    android:layout_width="match_parent"
+                    android:layout_height="300dp"
+                    android:background="@drawable/bg_qr"
+                    android:contentDescription="@string/scan_this"
+                    android:padding="12dp"
+                    android:scaleType="fitCenter" />
+
+                <TextView
+                    android:id="@+id/status"
+                    style="@style/Text.TitleSmall"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:gravity="center_horizontal" />
+
+                <TextView
+                    android:id="@+id/channels"
+                    style="@style/Text.Caption"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:gravity="center_horizontal"
+                    android:visibility="gone" />
+
+                <ProgressBar
+                    android:id="@+id/progress"
+                    style="@style/Progress"
+                    android:layout_marginTop="16dp"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <!-- QR slideshow tuning -->
+            <LinearLayout
+                android:id="@+id/slideshowControls"
+                style="@style/Card"
+                android:visibility="gone">
+
+                <TextView
+                    style="@style/Text.Overline"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/slideshow_settings" />
+
+                <TextView
+                    android:id="@+id/frameSizeLabel"
+                    style="@style/Text.Body"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:textColor="@color/fg" />
+
+                <SeekBar
+                    android:id="@+id/frameSize"
+                    style="@style/Slider" />
+
+                <TextView
+                    android:id="@+id/speedLabel"
+                    style="@style/Text.Body"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:textColor="@color/fg" />
+
+                <SeekBar
+                    android:id="@+id/speed"
+                    style="@style/Slider" />
+            </LinearLayout>
+
+            <!-- Wi-Fi Direct credentials (tap to copy the password) -->
             <TextView
-                android:id="@+id/frameSizeLabel"
-                style="@style/Body"
+                android:id="@+id/wifiDirectInfo"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp" />
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_card_tonal"
+                android:drawableStart="@drawable/ic_wifi"
+                android:drawablePadding="12dp"
+                android:drawableTint="@color/accent"
+                android:fontFamily="monospace"
+                android:foreground="?android:attr/selectableItemBackground"
+                android:padding="16dp"
+                android:textColor="@color/fg"
+                android:textSize="14sp"
+                android:visibility="gone" />
 
-            <SeekBar
-                android:id="@+id/frameSize"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
+            <!-- Actions -->
+            <Button
+                android:id="@+id/btnRetry"
+                style="@style/Button.Filled"
+                android:layout_marginTop="16dp"
+                android:text="@string/retry"
+                android:visibility="gone" />
 
-            <TextView
-                android:id="@+id/speedLabel"
-                style="@style/Body"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp" />
+            <Button
+                android:id="@+id/btnMode"
+                style="@style/Button.Tonal"
+                android:layout_marginTop="16dp"
+                android:text="@string/use_qr_slideshow" />
 
-            <SeekBar
-                android:id="@+id/speed"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
+            <Button
+                android:id="@+id/btnWifiDirect"
+                style="@style/Button.Outlined"
+                android:text="@string/start_wifi_direct" />
+
+            <!-- Channels the receiver can use -->
+            <LinearLayout
+                android:id="@+id/channelsCard"
+                style="@style/Card"
+                android:layout_marginTop="16dp">
+
+                <TextView
+                    style="@style/Text.Overline"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/channels_label" />
+
+                <LinearLayout
+                    android:id="@+id/channelList"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </LinearLayout>
+
+            <!-- What is being sent -->
+            <LinearLayout
+                android:id="@+id/itemsContainer"
+                style="@style/Card">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        style="@style/Text.Overline"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/items_label" />
+
+                    <Button
+                        android:id="@+id/btnAddMore"
+                        style="@style/Button.Text"
+                        android:layout_marginEnd="-8dp"
+                        android:drawableStart="@drawable/ic_add"
+                        android:text="@string/add_more_files" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/itemsList"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </LinearLayout>
         </LinearLayout>
-
-        <TextView
-            android:id="@+id/wifiDirectInfo"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:background="@color/card"
-            android:padding="12dp"
-            android:textColor="@color/fg"
-            android:textSize="15sp"
-            android:fontFamily="monospace"
-            android:visibility="gone" />
-
-        <Button
-            android:id="@+id/btnWifiDirect"
-            style="@style/BigButton"
-            android:text="@string/start_wifi_direct" />
-
-        <Button
-            android:id="@+id/btnMode"
-            style="@style/BigButton"
-            android:text="@string/use_qr_slideshow" />
-
-        <Button
-            android:id="@+id/btnRetry"
-            style="@style/BigButton"
-            android:text="@string/retry"
-            android:visibility="gone" />
-    </LinearLayout>
-</ScrollView>
+    </ScrollView>
+</LinearLayout>

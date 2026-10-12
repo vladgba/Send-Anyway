@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand -->
+    <color name="accent">#2E6BE6</color>
+    <color name="on_accent">#FFFFFF</color>
+    <color name="accent_container">#DDE7FF</color>
+    <color name="on_accent_container">#0C2A6B</color>
+
+    <color name="hero_end">#5B4BE0</color>
+
+    <!-- Surfaces -->
+    <color name="bg">#F5F7FB</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="card">#EDF1F7</color>
+    <color name="outline">#D9DEE7</color>
+    <color name="scrim">#99000000</color>
+
+    <!-- Text -->
+    <color name="fg">#151A22</color>
+    <color name="muted">#5C6677</color>
+
+    <!-- Status -->
+    <color name="success">#1E9A55</color>
+    <color name="success_container">#DCF4E5</color>
+    <color name="error">#C9362B</color>
+    <color name="error_container">#FCE4E1</color>
+    <color name="warning">#B26A00</color>
+    <color name="warning_container">#FFEFD5</color>
+
+    <!-- Always-white QR background, in both themes -->
+    <color name="qr_bg">#FFFFFF</color>
+</resources>

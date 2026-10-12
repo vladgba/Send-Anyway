@@ -78,6 +78,7 @@
 
         <activity
             android:name=".ui.ReceiveActivity"
+            android:theme="@style/AppTheme.Camera"
             android:exported="false"
             android:screenOrientation="portrait"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"

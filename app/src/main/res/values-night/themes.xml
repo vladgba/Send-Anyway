@@ -1,18 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="accent">#7AA2FF</color>
-    <color name="bg">#121417</color>
-    <color name="fg">#E8EAED</color>
-    <color name="muted">#A0A8B4</color>
-    <color name="card">#1E2228</color>
-
-    <style name="AppTheme" parent="android:Theme.Material.NoActionBar">
+    <style name="AppTheme.Base" parent="android:Theme.Material.NoActionBar">
         <item name="android:colorAccent">@color/accent</item>
         <item name="android:colorPrimary">@color/accent</item>
+        <item name="android:colorPrimaryDark">@color/bg</item>
+        <item name="android:colorControlNormal">@color/muted</item>
+        <item name="android:colorControlActivated">@color/accent</item>
+        <item name="android:colorControlHighlight">@color/ripple</item>
+        <item name="android:colorEdgeEffect">@color/accent</item>
         <item name="android:windowBackground">@color/bg</item>
         <item name="android:textColorPrimary">@color/fg</item>
         <item name="android:textColorSecondary">@color/muted</item>
+        <item name="android:textColorHint">@color/muted</item>
         <item name="android:statusBarColor">@color/bg</item>
+        <item name="android:alertDialogTheme">@style/AppDialog</item>
+        <item name="android:editTextStyle">@style/Input</item>
+    </style>
+
+    <style name="AppTheme" parent="AppTheme.Base">
         <item name="android:navigationBarColor">@color/bg</item>
+    </style>
+
+    <style name="AppDialog" parent="android:Theme.Material.Dialog.Alert">
+        <item name="android:colorAccent">@color/accent</item>
+        <item name="android:colorControlHighlight">@color/ripple</item>
+        <item name="android:textColorPrimary">@color/fg</item>
+        <item name="android:textColorSecondary">@color/muted</item>
+        <item name="android:windowBackground">@drawable/bg_dialog</item>
+        <item name="android:buttonBarButtonStyle">@style/Button.Dialog</item>
+        <item name="android:editTextStyle">@style/Input</item>
     </style>
 </resources>

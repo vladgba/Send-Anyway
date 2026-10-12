@@ -1,139 +1,211 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
+    android:id="@+id/root"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true"
     android:orientation="vertical">
 
+    <!-- Camera / hardware scanner area -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_weight="1"
+        android:background="#000000">
 
         <TextureView
             android:id="@+id/preview"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
+        <ImageView
+            android:id="@+id/viewfinder"
+            android:layout_width="220dp"
+            android:layout_height="220dp"
+            android:layout_gravity="center"
+            android:layout_marginBottom="12dp"
+            android:alpha="0.9"
+            android:importantForAccessibility="no"
+            android:src="@drawable/viewfinder" />
+
         <TextView
             android:id="@+id/focusHint"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom|center_horizontal"
-            android:layout_marginBottom="12dp"
-            android:background="#99000000"
-            android:paddingHorizontal="12dp"
-            android:paddingVertical="6dp"
+            android:layout_marginBottom="40dp"
+            android:background="@drawable/bg_scrim_pill"
+            android:paddingStart="14dp"
+            android:paddingTop="7dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="7dp"
             android:text="@string/tap_to_focus"
             android:textColor="#FFFFFF"
             android:textSize="13sp" />
-
-        <Button
-            android:id="@+id/btnTorch"
-            style="?android:attr/borderlessButtonStyle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="top|end"
-            android:layout_margin="16dp"
-            android:background="#99000000"
-            android:paddingHorizontal="16dp"
-            android:text="@string/torch"
-            android:textColor="#FFFFFF"
-            android:textSize="13sp"
-            android:visibility="gone" />
 
         <LinearLayout
             android:id="@+id/honeywellPanel"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:background="@color/bg"
             android:gravity="center"
             android:orientation="vertical"
-            android:padding="24dp"
+            android:paddingStart="32dp"
+            android:paddingEnd="32dp"
+            android:paddingBottom="24dp"
             android:visibility="gone">
+
+            <ImageView
+                style="@style/IconBadge"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:importantForAccessibility="no"
+                android:padding="20dp"
+                android:src="@drawable/ic_qr_code" />
 
             <TextView
                 android:id="@+id/honeywellTitle"
+                style="@style/Text.Title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/honeywell_ready"
-                android:textAlignment="center"
-                android:textColor="?android:attr/textColorPrimary"
-                android:textSize="18sp"
-                android:textStyle="bold" />
+                android:layout_marginTop="20dp"
+                android:gravity="center"
+                android:text="@string/honeywell_ready" />
 
             <TextView
                 android:id="@+id/honeywellHint"
+                style="@style/Text.Body"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="@string/honeywell_hint"
-                android:textAlignment="center"
-                android:textColor="?android:attr/textColorSecondary"
-                android:textSize="14sp" />
+                android:gravity="center"
+                android:text="@string/honeywell_hint" />
 
             <Button
                 android:id="@+id/btnToggleScannerMode"
-                style="?android:attr/borderlessButtonStyle"
+                style="@style/Button.Tonal"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="20dp"
                 android:text="@string/switch_to_camera" />
         </LinearLayout>
+
+        <!-- Floating controls -->
+        <ImageButton
+            android:id="@+id/btnBack"
+            style="@style/IconButton.Scrim"
+            android:layout_gravity="top|start"
+            android:layout_margin="12dp"
+            android:contentDescription="@string/back"
+            android:src="@drawable/ic_arrow_back" />
+
+        <ImageButton
+            android:id="@+id/btnTorch"
+            style="@style/IconButton.Scrim"
+            android:layout_gravity="top|end"
+            android:layout_margin="12dp"
+            android:contentDescription="@string/torch"
+            android:src="@drawable/ic_flash_on"
+            android:visibility="gone" />
     </FrameLayout>
 
-    <ScrollView
+    <!-- Bottom sheet: status, progress, received items. Overlaps the camera by 24dp.
+         Window insets (status / navigation bar) are applied in code. -->
+    <LinearLayout
+        android:id="@+id/sheet"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="0.8">
+        android:layout_marginTop="-24dp"
+        android:layout_weight="0.6"
+        android:background="@drawable/bg_sheet"
+        android:orientation="vertical">
 
-        <LinearLayout
+        <View
+            android:layout_width="36dp"
+            android:layout_height="4dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_handle" />
+
+        <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="20dp">
-
-            <TextView
-                android:id="@+id/status"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/point_camera"
-                android:textColor="@color/fg"
-                android:textSize="16sp" />
-
-            <Button
-                android:id="@+id/btnWifiSettings"
-                style="@style/BigButton"
-                android:text="@string/open_wifi_settings"
-                android:visibility="gone" />
-
-            <Button
-                android:id="@+id/btnCopyPassword"
-                style="@style/BigButton"
-                android:text="@string/copy_password"
-                android:visibility="gone" />
-
-            <ProgressBar
-                android:id="@+id/progress"
-                style="?android:attr/progressBarStyleHorizontal"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:max="1000"
-                android:visibility="gone" />
-
-            <x.vladgba.sendanyway.ui.QrMapView
-                android:id="@+id/qrMap"
-                android:layout_width="match_parent"
-                android:layout_height="96dp"
-                android:layout_marginTop="8dp"
-                android:visibility="gone" />
+            android:layout_height="match_parent"
+            android:overScrollMode="ifContentScrolls">
 
             <LinearLayout
-                android:id="@+id/results"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:orientation="vertical" />
-        </LinearLayout>
-    </ScrollView>
+                android:animateLayoutChanges="true"
+                android:orientation="vertical"
+                android:paddingStart="20dp"
+                android:paddingTop="14dp"
+                android:paddingEnd="20dp"
+                android:paddingBottom="20dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:id="@+id/statusIcon"
+                        style="@style/IconBadge"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/ic_qr_code" />
+
+                    <TextView
+                        android:id="@+id/status"
+                        style="@style/Text.Subtitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="14dp"
+                        android:layout_weight="1"
+                        android:lineSpacingExtra="3sp"
+                        android:minHeight="40dp"
+                        android:gravity="center_vertical"
+                        android:text="@string/point_camera" />
+                </LinearLayout>
+
+                <ProgressBar
+                    android:id="@+id/progress"
+                    style="@style/Progress"
+                    android:layout_marginTop="16dp"
+                    android:visibility="gone" />
+
+                <x.vladgba.sendanyway.ui.QrMapView
+                    android:id="@+id/qrMap"
+                    android:layout_width="match_parent"
+                    android:layout_height="96dp"
+                    android:layout_marginTop="12dp"
+                    android:visibility="gone" />
+
+                <Button
+                    android:id="@+id/btnWifiSettings"
+                    style="@style/Button.Filled"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/open_wifi_settings"
+                    android:visibility="gone" />
+
+                <Button
+                    android:id="@+id/btnCopyPassword"
+                    style="@style/Button.Tonal"
+                    android:text="@string/copy_password"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/resultsLabel"
+                    style="@style/Text.Overline"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:text="@string/received_label"
+                    android:visibility="gone" />
+
+                <LinearLayout
+                    android:id="@+id/results"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="vertical" />
+            </LinearLayout>
+        </ScrollView>
+    </LinearLayout>
 </LinearLayout>

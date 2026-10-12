@@ -2,13 +2,17 @@ package x.vladgba.sendanyway.ui
 
 import android.app.Activity
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Parcelable
+import android.text.TextUtils
+import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
+import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -65,6 +69,9 @@ class SendActivity : Activity() {
     private lateinit var speed: SeekBar
     private lateinit var itemsContainer: View
     private lateinit var itemsList: LinearLayout
+    private lateinit var statusIcon: ImageView
+    private lateinit var channelsCard: View
+    private lateinit var channelList: LinearLayout
 
     private val app by lazy { applicationContext }
     private var sessionId: ByteArray? = null
@@ -97,7 +104,7 @@ class SendActivity : Activity() {
             try {
                 QrRender.show(qrView, QrRender.encode(s.frameAt(frameIndex), ErrorCorrectionLevel.L))
             } catch (e: Exception) {
-                status.text = getString(R.string.failed, e.message ?: e.toString())
+                showError(e)
                 return
             }
             frameIndex++
@@ -119,6 +126,10 @@ class SendActivity : Activity() {
         frameSize = findViewById(R.id.frameSize)
         speedLabel = findViewById(R.id.speedLabel)
         speed = findViewById(R.id.speed)
+        statusIcon = findViewById(R.id.statusIcon)
+        channelsCard = findViewById(R.id.channelsCard)
+        channelList = findViewById(R.id.channelList)
+        findViewById<View>(R.id.btnBack).setOnClickListener { finish() }
 
         myName = Device.name(this)
         items = ArrayList(collectItems())
@@ -136,7 +147,8 @@ class SendActivity : Activity() {
         if (!updateSummaryAndList()) return
 
         val dm = resources.displayMetrics
-        val side = minOf(dm.widthPixels - (40 * dm.density).toInt(), (dm.heightPixels * 0.55).toInt())
+        // Screen gutter (16dp) + card padding (20dp) on each side.
+        val side = minOf(dm.widthPixels - dp(72), (dm.heightPixels * 0.5).toInt())
         qrView.layoutParams = qrView.layoutParams.apply { width = side; height = side }
 
         setupSlideshowControls()
@@ -162,34 +174,45 @@ class SendActivity : Activity() {
         findViewById<TextView>(R.id.summary).text =
             getString(R.string.items_summary, items.size, formatSize(total))
         itemsList.removeAllViews()
-        for (i in 0 until items.size) {
-            val item = items[i]
-            val row = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = android.view.Gravity.CENTER_VERTICAL
-                setPadding(0, dp(2), 0, dp(2))
-            }
-            val tv = TextView(this).apply {
-                text = "${item.info.name} (${formatSize(item.info.size)})"
-                setTextColor(getColor(R.color.fg))
-                textSize = 13f
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            }
-            val btnRemove = Button(this, null, android.R.attr.borderlessButtonStyle).apply {
-                text = "✕"
-                textSize = 14f
-                setOnClickListener {
-                    items.removeAt(i)
-                    bundle = null
-                    slicer = null
-                    if (updateSummaryAndList()) refreshPairing()
-                }
-            }
-            row.addView(tv)
-            row.addView(btnRemove)
-            itemsList.addView(row)
-        }
+        for (i in 0 until items.size) itemsList.addView(itemRow(i, items[i]))
         return true
+    }
+
+    /** One row of the "Items" card: type icon, name + size, remove button. */
+    private fun itemRow(index: Int, item: OutgoingItem): View {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(12) }
+        }
+        row.addView(iconBadge(if (item is TextItem) R.drawable.ic_text else R.drawable.ic_file))
+        val texts = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f).apply { marginStart = dp(14) }
+        }
+        texts.addView(TextView(this, null, 0, R.style.Text_Subtitle).apply {
+            text = item.info.name
+            isSingleLine = true
+            ellipsize = TextUtils.TruncateAt.MIDDLE
+        })
+        texts.addView(TextView(this, null, 0, R.style.Text_Caption).apply {
+            text = formatSize(item.info.size)
+        })
+        row.addView(texts)
+        row.addView(ImageButton(this, null, 0, R.style.IconButton).apply {
+            layoutParams = LinearLayout.LayoutParams(dp(40), dp(40)).apply { marginEnd = -dp(8) }
+            setPadding(dp(10), dp(10), dp(10), dp(10))
+            setImageResource(R.drawable.ic_close)
+            imageTintList = ColorStateList.valueOf(getColor(R.color.muted))
+            contentDescription = getString(R.string.remove)
+            setOnClickListener {
+                items.removeAt(index)
+                bundle = null
+                slicer = null
+                if (updateSummaryAndList()) refreshPairing()
+            }
+        })
+        return row
     }
 
     @Deprecated("Framework Activity API")
@@ -271,14 +294,55 @@ class SendActivity : Activity() {
         val addrs = if (lan != null) Lan.localIpv4() else emptyList()
         pairingQr = base.withWifiGroup(wifiGroup, addrs.map { it.address }).encode()
 
-        val parts = ArrayList<String>()
-        if (addrs.isNotEmpty()) parts += getString(R.string.channel_lan, addrs.joinToString { it.hostAddress ?: "" })
-        if (wifiGroup != null) parts += getString(R.string.channel_wifi_direct)
-        if (classic) parts += getString(if (discoverable) R.string.channel_classic else R.string.channel_classic_hidden)
-        var text = getString(R.string.channels, parts.joinToString(" · ").ifEmpty { getString(R.string.channel_none) })
-        if (!classic) text += "\n" + getString(R.string.bt_unavailable)
-        channels.text = text
+        renderChannels(addrs.joinToString { it.hostAddress ?: "" })
         if (!slideshow && !claimed.get()) showPairing()
+    }
+
+    /** Fills the "Channels" card: one row per way the receiver can reach us, with an on/off dot. */
+    private fun renderChannels(lanAddrs: String) {
+        channelList.removeAllViews()
+        channelList.addView(channelRow(R.drawable.ic_wifi, R.string.ch_lan,
+            lanAddrs.ifEmpty { getString(R.string.ch_lan_off) }, lanAddrs.isNotEmpty()))
+        if (WifiDirect.supported(this)) {
+            val g = wifiGroup
+            channelList.addView(channelRow(R.drawable.ic_wifi, R.string.ch_direct,
+                if (g != null) getString(R.string.ch_direct_on, g.networkName) else getString(R.string.ch_direct_off), g != null))
+        }
+        channelList.addView(channelRow(R.drawable.ic_bluetooth, R.string.ch_bt,
+            getString(when {
+                !classic -> R.string.ch_bt_off
+                discoverable -> R.string.ch_bt_visible
+                else -> R.string.ch_bt_hidden
+            }), classic))
+        channelList.addView(channelRow(R.drawable.ic_slideshow, R.string.ch_qr, getString(R.string.ch_qr_desc), true))
+    }
+
+    private fun channelRow(icon: Int, title: Int, detail: String, on: Boolean): View {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(14) }
+        }
+        row.addView(iconBadge(icon, 36).apply {
+            setPadding(dp(8), dp(8), dp(8), dp(8))
+            if (!on) showBadge(icon, R.color.card, R.color.muted)
+        })
+        val texts = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f).apply { marginStart = dp(14) }
+        }
+        texts.addView(TextView(this, null, 0, R.style.Text_Subtitle).apply {
+            setText(title)
+            if (!on) setTextColor(getColor(R.color.muted))
+        })
+        texts.addView(TextView(this, null, 0, R.style.Text_Caption).apply { text = detail })
+        row.addView(texts)
+        row.addView(View(this).apply {
+            background = getDrawable(R.drawable.bg_dot)
+            backgroundTintList = ColorStateList.valueOf(getColor(if (on) R.color.success else R.color.outline))
+            layoutParams = LinearLayout.LayoutParams(dp(8), dp(8)).apply { marginStart = dp(12) }
+        })
+        return row
     }
 
     // ---- Wi-Fi Direct -----------------------------------------------------------------------
@@ -393,13 +457,18 @@ class SendActivity : Activity() {
         controls.visibility = View.GONE
         btnMode.visibility = View.GONE
         btnDirect.visibility = View.GONE
+        directView.visibility = View.GONE
+        channelsCard.visibility = View.GONE
         itemsContainer.visibility = View.GONE
+        statusIcon.visibility = View.VISIBLE
+        statusIcon.showTone(Tone.WORKING)
         vibrateTick()
         val total = items.map { it.info }.knownTotal()
         if (total > 100 * 1024 * 1024L) checkBatteryOptimization()
         val via = if (link.detail.isEmpty()) link.transport else "${link.transport} (${link.detail})"
         status.text = getString(R.string.connected_to, peer, via)
         channels.text = ""
+        channels.visibility = View.VISIBLE
         progress.visibility = View.VISIBLE
         progress.progress = 0
     }
@@ -414,6 +483,7 @@ class SendActivity : Activity() {
         watchdog?.stop()
         if (closed) return
         progress.progress = 1000
+        statusIcon.showTone(Tone.SUCCESS)
         status.text = getString(R.string.done_sent, peer)
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         vibrateSuccess()
@@ -424,6 +494,8 @@ class SendActivity : Activity() {
         if (closed) return
         status.text = if (stalled) getString(R.string.stalled, (STALL_LIMIT_MS / 1000).toInt())
         else getString(R.string.failed, e.message ?: e.javaClass.simpleName)
+        statusIcon.visibility = View.VISIBLE
+        statusIcon.showTone(Tone.ERROR)
         btnRetry.visibility = View.VISIBLE
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
@@ -437,7 +509,17 @@ class SendActivity : Activity() {
         controls.visibility = View.GONE
         btnMode.setText(R.string.use_qr_slideshow)
         status.setText(R.string.scan_this)
+        statusIcon.visibility = View.GONE
+        qrView.visibility = View.VISIBLE
         qrView.post { QrRender.show(qrView, QrRender.encode(qr, ErrorCorrectionLevel.M)) }
+    }
+
+    /** The slideshow could not be built or rendered: say so in the main card. */
+    private fun showError(e: Exception) {
+        status.text = getString(R.string.failed, e.message ?: e.toString())
+        qrView.visibility = View.GONE
+        statusIcon.visibility = View.VISIBLE
+        statusIcon.showTone(Tone.ERROR)
     }
 
     private fun startSlideshow() {
@@ -451,7 +533,7 @@ class SendActivity : Activity() {
                 val b = QrBundle.build(items)
                 ui { if (!closed) { bundle = b; beginSlides() } }
             } catch (e: Exception) {
-                ui { if (!closed) status.text = getString(R.string.failed, e.message ?: e.toString()) }
+                ui { if (!closed) showError(e) }
             }
         }
     }
@@ -468,6 +550,8 @@ class SendActivity : Activity() {
             text += "\n" + getString(R.string.slideshow_too_big, formatSize(b.size.toLong()), formatDuration(seconds))
         }
         status.text = text
+        statusIcon.visibility = View.GONE
+        qrView.visibility = View.VISIBLE
         mainHandler.removeCallbacks(tick)
         mainHandler.post(tick)
     }
@@ -534,8 +618,6 @@ class SendActivity : Activity() {
     private inline fun <reified T : Parcelable> Intent.parcelableList(key: String): List<T>? =
         if (Build.VERSION.SDK_INT >= 33) getParcelableArrayListExtra(key, T::class.java) else getParcelableArrayListExtra(key)
 
-    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
-
     companion object {
         const val EXTRA_URIS = "x.vladgba.sendanyway.URIS"
         const val EXTRA_TREE_URI = "x.vladgba.sendanyway.TREE_URI"
@@ -544,5 +626,7 @@ class SendActivity : Activity() {
         private const val REQ_DISCOVERABLE = 3
         private const val REQ_PICK_MORE = 4
         private const val QR_WARN_BYTES = 256 * 1024
+        private const val MATCH = LinearLayout.LayoutParams.MATCH_PARENT
+        private const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
     }
 }

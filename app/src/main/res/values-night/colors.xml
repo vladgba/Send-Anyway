@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="accent">#8DB0FF</color>
+    <color name="on_accent">#0A1D47</color>
+    <color name="accent_container">#24375F</color>
+    <color name="on_accent_container">#DDE7FF</color>
+
+    <color name="hero_end">#B7A8FF</color>
+
+    <color name="bg">#0E1014</color>
+    <color name="surface">#171A20</color>
+    <color name="card">#20242C</color>
+    <color name="outline">#2E333D</color>
+
+    <color name="fg">#E8EBF0</color>
+    <color name="muted">#9BA4B3</color>
+
+    <color name="success">#5CD08C</color>
+    <color name="success_container">#163323</color>
+    <color name="error">#FF8A80</color>
+    <color name="error_container">#3D1B18</color>
+    <color name="warning">#FFC266</color>
+    <color name="warning_container">#3A2A10</color>
+</resources>

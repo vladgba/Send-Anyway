@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Four rounded corner brackets framing the scan area -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp" android:height="200dp"
+    android:viewportWidth="240" android:viewportHeight="240">
+    <path
+        android:pathData="M4,44 L4,28 A24,24 0 0,1 28,4 L44,4 M196,4 L212,4 A24,24 0 0,1 236,28 L236,44 M236,196 L236,212 A24,24 0 0,1 212,236 L196,236 M44,236 L28,236 A24,24 0 0,1 4,212 L4,196"
+        android:strokeWidth="5"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round" />
+</vector>

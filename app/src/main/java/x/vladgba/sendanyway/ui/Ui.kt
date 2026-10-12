@@ -2,10 +2,15 @@ package x.vladgba.sendanyway.ui
 
 import android.app.Activity
 import android.content.pm.PackageManager
+import android.content.res.ColorStateList
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.view.View
 import android.view.WindowManager
+import android.widget.ImageView
+import android.widget.LinearLayout
+import x.vladgba.sendanyway.R
 import java.util.Locale
 
 internal val mainHandler = Handler(Looper.getMainLooper())
@@ -29,6 +34,39 @@ internal fun formatDuration(seconds: Long): String = when {
     seconds < 3600 -> "${seconds / 60}m ${seconds % 60}s"
     else -> "${seconds / 3600}h ${(seconds % 3600) / 60}m"
 }
+
+internal fun android.content.Context.dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
+
+/** Visual state of a status badge: icon + container colour. */
+internal enum class Tone(val icon: Int, val container: Int, val content: Int) {
+    INFO(R.drawable.ic_qr_code, R.color.accent_container, R.color.on_accent_container),
+    WORKING(R.drawable.ic_swap, R.color.accent_container, R.color.on_accent_container),
+    SUCCESS(R.drawable.ic_check, R.color.success_container, R.color.success),
+    WARNING(R.drawable.ic_alert, R.color.warning_container, R.color.warning),
+    ERROR(R.drawable.ic_alert, R.color.error_container, R.color.error),
+}
+
+/** Recolours a round [R.style.IconBadge] to show [tone]. */
+internal fun ImageView.showTone(tone: Tone) {
+    setImageResource(tone.icon)
+    backgroundTintList = ColorStateList.valueOf(context.getColor(tone.container))
+    imageTintList = ColorStateList.valueOf(context.getColor(tone.content))
+}
+
+/** Same as [showTone] but with any icon, in the default accent colours. */
+internal fun ImageView.showBadge(icon: Int, container: Int = R.color.accent_container, content: Int = R.color.on_accent_container) {
+    setImageResource(icon)
+    backgroundTintList = ColorStateList.valueOf(context.getColor(container))
+    imageTintList = ColorStateList.valueOf(context.getColor(content))
+}
+
+/** A round icon badge, built in code (list rows, result cards). */
+internal fun android.content.Context.iconBadge(icon: Int, sizeDp: Int = 40): ImageView =
+    ImageView(this, null, 0, R.style.IconBadge).apply {
+        layoutParams = LinearLayout.LayoutParams(dp(sizeDp), dp(sizeDp))
+        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        showBadge(icon)
+    }
 
 internal fun Activity.missingPermissions(perms: Array<String>): Array<String> =
     perms.filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }.toTypedArray()

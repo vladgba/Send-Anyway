@@ -1,37 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="accent">#2E6BE6</color>
-    <color name="bg">#FFFFFF</color>
-    <color name="fg">#1B1F24</color>
-    <color name="muted">#5F6B7A</color>
-    <color name="card">#F1F4F8</color>
-
-    <style name="AppTheme" parent="android:Theme.Material.Light.NoActionBar">
+    <!-- Light theme. Colours: values/colors.xml, components: values/styles.xml.
+         API 27+ adds light navigation-bar icons (values-v27); dark mode lives in values-night. -->
+    <style name="AppTheme.Base" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:colorAccent">@color/accent</item>
         <item name="android:colorPrimary">@color/accent</item>
+        <item name="android:colorPrimaryDark">@color/bg</item>
+        <item name="android:colorControlNormal">@color/muted</item>
+        <item name="android:colorControlActivated">@color/accent</item>
+        <item name="android:colorControlHighlight">@color/ripple</item>
+        <item name="android:colorEdgeEffect">@color/accent</item>
         <item name="android:windowBackground">@color/bg</item>
         <item name="android:textColorPrimary">@color/fg</item>
         <item name="android:textColorSecondary">@color/muted</item>
+        <item name="android:textColorHint">@color/muted</item>
         <item name="android:statusBarColor">@color/bg</item>
-        <item name="android:navigationBarColor">@color/bg</item>
         <item name="android:windowLightStatusBar">true</item>
+        <item name="android:alertDialogTheme">@style/AppDialog</item>
+        <item name="android:editTextStyle">@style/Input</item>
     </style>
 
-    <style name="Title">
-        <item name="android:textSize">26sp</item>
-        <item name="android:textStyle">bold</item>
-        <item name="android:textColor">@color/fg</item>
+    <!-- Light navigation-bar icons need API 27: keep a dark bar before that. -->
+    <style name="AppTheme" parent="AppTheme.Base">
+        <item name="android:navigationBarColor">#000000</item>
     </style>
 
-    <style name="Body">
-        <item name="android:textSize">15sp</item>
-        <item name="android:textColor">@color/muted</item>
+    <style name="AppDialog" parent="android:Theme.Material.Light.Dialog.Alert">
+        <item name="android:colorAccent">@color/accent</item>
+        <item name="android:colorControlHighlight">@color/ripple</item>
+        <item name="android:textColorPrimary">@color/fg</item>
+        <item name="android:textColorSecondary">@color/muted</item>
+        <item name="android:windowBackground">@drawable/bg_dialog</item>
+        <item name="android:buttonBarButtonStyle">@style/Button.Dialog</item>
+        <item name="android:editTextStyle">@style/Input</item>
     </style>
 
-    <style name="BigButton" parent="android:Widget.Material.Button.Colored">
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">64dp</item>
-        <item name="android:textSize">17sp</item>
-        <item name="android:layout_marginTop">12dp</item>
+    <!-- Receive screen: the camera fills the top, so the status bar goes black. -->
+    <style name="AppTheme.Camera" parent="AppTheme">
+        <item name="android:statusBarColor">#000000</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowBackground">@color/surface</item>
     </style>
 </resources>

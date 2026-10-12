@@ -1,43 +1,238 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:fillViewport="true"
     android:fitsSystemWindows="true"
-    android:gravity="center_vertical"
-    android:orientation="vertical"
-    android:padding="24dp">
+    android:overScrollMode="ifContentScrolls">
 
-    <TextView
-        style="@style/Title"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/app_name" />
-
-    <TextView
-        style="@style/Body"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="24dp"
-        android:text="@string/tagline" />
+        android:orientation="vertical"
+        android:paddingStart="20dp"
+        android:paddingTop="16dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="24dp">
 
-    <Button
-        android:id="@+id/btnSendFiles"
-        style="@style/BigButton"
-        android:text="@string/send_files" />
+        <!-- Brand -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-    <Button
-        android:id="@+id/btnSendFolder"
-        style="@style/BigButton"
-        android:text="@string/send_folder" />
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_logo"
+                android:importantForAccessibility="no"
+                android:padding="10dp"
+                android:src="@drawable/ic_send"
+                android:tint="@color/on_accent" />
 
-    <Button
-        android:id="@+id/btnSendText"
-        style="@style/BigButton"
-        android:text="@string/send_text" />
+            <TextView
+                style="@style/Text.TitleSmall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:text="@string/app_name" />
+        </LinearLayout>
 
-    <Button
-        android:id="@+id/btnReceive"
-        style="@style/BigButton"
-        android:text="@string/receive" />
-</LinearLayout>
+        <TextView
+            style="@style/Text.Display"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:text="@string/headline" />
+
+        <TextView
+            style="@style/Text.Body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/tagline" />
+
+        <!-- Receive: the hero action -->
+        <LinearLayout
+            android:id="@+id/btnReceive"
+            android:contentDescription="@string/receive"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:background="@drawable/bg_hero"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="20dp">
+
+            <ImageView
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:background="@drawable/bg_icon_circle_on_hero"
+                android:importantForAccessibility="no"
+                android:padding="13dp"
+                android:src="@drawable/ic_qr_code"
+                android:tint="@color/on_accent" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/Text.Title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/receive"
+                    android:textColor="@color/on_accent" />
+
+                <TextView
+                    style="@style/Text.Caption"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:alpha="0.85"
+                    android:text="@string/receive_hint"
+                    android:textColor="@color/on_accent" />
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_arrow_forward"
+                android:tint="@color/on_accent" />
+        </LinearLayout>
+
+        <!-- Send -->
+        <TextView
+            style="@style/Text.Overline"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="28dp"
+            android:text="@string/send_section" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:id="@+id/btnSendFiles"
+                style="@style/HomeTile"
+                android:contentDescription="@string/send_files"
+                android:layout_marginEnd="6dp">
+
+                <ImageView
+                    style="@style/HomeTileIcon"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_file" />
+
+                <TextView
+                    style="@style/HomeTileTitle"
+                    android:text="@string/tile_files" />
+
+                <TextView
+                    style="@style/HomeTileCaption"
+                    android:text="@string/send_files_hint" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/btnSendFolder"
+                style="@style/HomeTile"
+                android:contentDescription="@string/send_folder"
+                android:layout_marginStart="6dp"
+                android:layout_marginEnd="6dp">
+
+                <ImageView
+                    style="@style/HomeTileIcon"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_folder" />
+
+                <TextView
+                    style="@style/HomeTileTitle"
+                    android:text="@string/tile_folder" />
+
+                <TextView
+                    style="@style/HomeTileCaption"
+                    android:text="@string/send_folder_hint" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/btnSendText"
+                style="@style/HomeTile"
+                android:contentDescription="@string/send_text"
+                android:layout_marginStart="6dp">
+
+                <ImageView
+                    style="@style/HomeTileIcon"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_text" />
+
+                <TextView
+                    style="@style/HomeTileTitle"
+                    android:text="@string/tile_text" />
+
+                <TextView
+                    style="@style/HomeTileCaption"
+                    android:text="@string/send_text_hint" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- How it works -->
+        <LinearLayout
+            style="@style/Card"
+            android:layout_marginTop="28dp">
+
+            <TextView
+                style="@style/Text.Subtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/how_title" />
+
+            <LinearLayout style="@style/HowStep">
+
+                <TextView
+                    style="@style/HowStepNumber"
+                    tools:ignore="HardcodedText"
+                    android:text="1" />
+
+                <TextView
+                    style="@style/HowStepText"
+                    android:text="@string/how_1" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/HowStep">
+
+                <TextView
+                    style="@style/HowStepNumber"
+                    tools:ignore="HardcodedText"
+                    android:text="2" />
+
+                <TextView
+                    style="@style/HowStepText"
+                    android:text="@string/how_2" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/HowStep">
+
+                <TextView
+                    style="@style/HowStepNumber"
+                    tools:ignore="HardcodedText"
+                    android:text="3" />
+
+                <TextView
+                    style="@style/HowStepText"
+                    android:text="@string/how_3" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

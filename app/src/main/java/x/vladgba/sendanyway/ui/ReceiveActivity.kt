@@ -13,10 +13,15 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.os.SystemClock
+import android.text.TextUtils
+import android.view.Gravity
 import android.view.TextureView
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.Button
+import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -56,6 +61,11 @@ class ReceiveActivity : Activity() {
     private lateinit var status: TextView
     private lateinit var progress: ProgressBar
     private lateinit var results: LinearLayout
+    private lateinit var resultsLabel: View
+    private lateinit var statusIcon: ImageView
+    private lateinit var viewfinder: View
+    private lateinit var focusHint: TextView
+    private lateinit var btnTorch: ImageButton
     private lateinit var myName: String
     private val app by lazy { applicationContext }
 
@@ -89,7 +99,7 @@ class ReceiveActivity : Activity() {
     private var lastHint = 0L
 
     private val connectTimeout = Runnable {
-        if (!claimed.get() && pairing != null && !assembler.active) status.setText(R.string.connect_failed)
+        if (!claimed.get() && pairing != null && !assembler.active) setStatus(Tone.WARNING, getString(R.string.connect_failed))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -99,6 +109,13 @@ class ReceiveActivity : Activity() {
         status = findViewById(R.id.status)
         progress = findViewById(R.id.progress)
         results = findViewById(R.id.results)
+        resultsLabel = findViewById(R.id.resultsLabel)
+        statusIcon = findViewById(R.id.statusIcon)
+        viewfinder = findViewById(R.id.viewfinder)
+        focusHint = findViewById(R.id.focusHint)
+        btnTorch = findViewById(R.id.btnTorch)
+        findViewById<View>(R.id.btnBack).setOnClickListener { finish() }
+        applyInsets()
         qrMap = findViewById(R.id.qrMap)
         btnWifi = findViewById(R.id.btnWifiSettings)
         btnWifi.setOnClickListener { openWifiSettings() }
@@ -113,14 +130,12 @@ class ReceiveActivity : Activity() {
         if (HoneywellScanner.isHoneywell()) {
             isUsingHoneywell = true
             honeywellPanel?.visibility = View.VISIBLE
-            preview.visibility = View.GONE
-            findViewById<View>(R.id.focusHint).visibility = View.GONE
-            findViewById<View>(R.id.btnTorch).visibility = View.GONE
-            status.setText(R.string.honeywell_ready)
+            showCamera(false)
+            setStatus(Tone.INFO, getString(R.string.honeywell_ready))
             honeywellScanner = runCatching {
                 HoneywellScanner(this, ::onCode) { ready ->
                     if (ready && isUsingHoneywell) {
-                        status.setText(R.string.honeywell_ready)
+                        setStatus(Tone.INFO, getString(R.string.honeywell_ready))
                     }
                 }
             }.getOrNull()
@@ -144,8 +159,43 @@ class ReceiveActivity : Activity() {
         if (checkSelfPermission(Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
             if (!isUsingHoneywell) onCameraAllowed()
         } else if (!isUsingHoneywell) {
-            status.setText(R.string.camera_needed)
+            setStatus(Tone.ERROR, getString(R.string.camera_needed))
         }
+    }
+
+    /**
+     * The camera runs under the status bar (edge-to-edge on Android 15+): push the floating
+     * buttons below it and keep the sheet's content above the navigation bar. On older versions
+     * the bars aren't overlapped and the insets come through as zero.
+     */
+    private fun applyInsets() {
+        val floating = listOf(findViewById<View>(R.id.btnBack), btnTorch)
+        val sheet = findViewById<View>(R.id.sheet)
+        findViewById<View>(R.id.root).setOnApplyWindowInsetsListener { _, insets ->
+            @Suppress("DEPRECATION") val top = insets.systemWindowInsetTop
+            @Suppress("DEPRECATION") val bottom = insets.systemWindowInsetBottom
+            floating.forEach { v ->
+                v.layoutParams = (v.layoutParams as ViewGroup.MarginLayoutParams).apply { topMargin = dp(12) + top }
+            }
+            honeywellPanel?.setPadding(dp(32), top, dp(32), dp(24))
+            sheet.setPadding(0, 0, 0, bottom)
+            insets
+        }
+    }
+
+    /** Status line in the bottom sheet, with a matching coloured badge. */
+    private fun setStatus(tone: Tone, text: CharSequence) {
+        status.text = text
+        statusIcon.showTone(tone)
+    }
+
+    /** Camera preview + its overlays, or neither (hardware scanner mode). */
+    private fun showCamera(on: Boolean) {
+        val v = if (on) View.VISIBLE else View.GONE
+        preview.visibility = v
+        viewfinder.visibility = v
+        focusHint.visibility = v
+        if (!on) btnTorch.visibility = View.GONE
     }
 
     private fun toggleScannerMode() {
@@ -153,37 +203,34 @@ class ReceiveActivity : Activity() {
             isUsingHoneywell = false
             honeywellScanner?.onPause()
             honeywellPanel?.visibility = View.GONE
-            preview.visibility = View.VISIBLE
-            findViewById<View>(R.id.focusHint).visibility = View.VISIBLE
+            showCamera(true)
             btnToggleScannerMode?.setText(R.string.switch_to_hardware_scanner)
+            setStatus(Tone.INFO, getString(R.string.point_camera))
             onCameraAllowed()
         } else {
             isUsingHoneywell = true
             scanner?.stop()
-            preview.visibility = View.GONE
-            findViewById<View>(R.id.focusHint).visibility = View.GONE
-            findViewById<View>(R.id.btnTorch).visibility = View.GONE
+            showCamera(false)
             honeywellPanel?.visibility = View.VISIBLE
             btnToggleScannerMode?.setText(R.string.switch_to_camera)
-            status.setText(R.string.honeywell_ready)
+            setStatus(Tone.INFO, getString(R.string.honeywell_ready))
             honeywellScanner?.onResume()
         }
     }
 
     private fun onCameraAllowed() {
         cameraAllowed = true
-        val focusHint = findViewById<TextView>(R.id.focusHint)
-        val btnTorch = findViewById<Button>(R.id.btnTorch)
         if (scanner == null) {
             scanner = QrScanner(
                 this, preview, ::onCode,
-                onError = { msg -> status.text = getString(R.string.failed, msg) },
+                onError = { msg -> setStatus(Tone.ERROR, getString(R.string.failed, msg)) },
                 onFocusLock = { locked -> focusHint.setText(if (locked) R.string.focus_locked else R.string.tap_to_focus) },
             )
             preview.setOnClickListener { scanner?.refocus() }
             btnTorch.setOnClickListener {
                 scanner?.toggleTorch { on ->
-                    btnTorch.setText(if (on) R.string.torch_off else R.string.torch)
+                    btnTorch.setImageResource(if (on) R.drawable.ic_flash_off else R.drawable.ic_flash_on)
+                    btnTorch.contentDescription = getString(if (on) R.string.torch_off else R.string.torch)
                 }
             }
         }
@@ -275,7 +322,7 @@ class ReceiveActivity : Activity() {
                 val now = SystemClock.uptimeMillis()
                 if (pairing == null && !assembler.active && now - lastHint > 3000) {
                     lastHint = now
-                    status.setText(R.string.not_ours)
+                    setStatus(Tone.WARNING, getString(R.string.not_ours))
                 }
             }
         }
@@ -287,7 +334,7 @@ class ReceiveActivity : Activity() {
         btnWifi.visibility = View.GONE
         btnCopyPassword.visibility = View.GONE
         manualPassword = null
-        status.text = getString(R.string.connecting_to, p.deviceName)
+        setStatus(Tone.WORKING, getString(R.string.connecting_to, p.deviceName))
         val group = p.wifiGroup
         val addrs = p.lanAddresses.mapNotNull { runCatching { InetAddress.getByAddress(it) }.getOrNull() }
         if (p.lanPort > 0 && addrs.isNotEmpty()) {
@@ -316,7 +363,7 @@ class ReceiveActivity : Activity() {
 
     private fun startWifiDirectJoin(p: Pairing) {
         val group = p.wifiGroup ?: return
-        status.text = getString(R.string.joining_wifi_direct, group.networkName)
+        setStatus(Tone.WORKING, getString(R.string.joining_wifi_direct, group.networkName))
         directClient = WifiDirectClient(this, p, { onLink(p, it) }, onAttempt = { n, max ->
             if (!closed && !claimed.get() && pairing === p) {
                 status.text = if (n == 1) getString(R.string.joining_wifi_direct, group.networkName)
@@ -324,7 +371,7 @@ class ReceiveActivity : Activity() {
             }
         }, onGiveUp = { reason ->
             if (!closed && !claimed.get() && pairing === p) {
-                status.text = getString(R.string.wifi_direct_join_failed, reason)
+                setStatus(Tone.WARNING, getString(R.string.wifi_direct_join_failed, reason))
                 if (WifiDirect.locationOff(this)) status.append("\n" + getString(R.string.location_off))
                 showManualJoin(group, keepStatus = true)
                 startBluetooth(p)
@@ -335,7 +382,7 @@ class ReceiveActivity : Activity() {
     /** Fallback: the user joins "DIRECT-…" in Wi-Fi settings, the Wi-Fi watcher connects. */
     private fun showManualJoin(g: Pairing.WifiGroup, keepStatus: Boolean = false) {
         val text = getString(R.string.join_manually, g.networkName, g.passphrase)
-        status.text = if (keepStatus) "${status.text}\n$text" else text
+        setStatus(Tone.WARNING, if (keepStatus) "${status.text}\n$text" else text)
         manualPassword = g.passphrase
         btnWifi.visibility = View.VISIBLE
         btnCopyPassword.visibility = View.VISIBLE
@@ -406,7 +453,7 @@ class ReceiveActivity : Activity() {
         TransferService.begin(this, getString(R.string.notif_receiving, peer), getString(R.string.receiving_from, count, peer, link.transport), link)
         transferring = true
         stalled = false
-        findViewById<Button>(R.id.btnTorch).visibility = View.GONE
+        btnTorch.visibility = View.GONE
         btnWifi.visibility = View.GONE
         btnCopyPassword.visibility = View.GONE
         vibrateTick()
@@ -419,7 +466,7 @@ class ReceiveActivity : Activity() {
         mainHandler.removeCallbacks(connectTimeout)
         scanner?.stop()
         honeywellScanner?.setContinuous(false)
-        status.text = getString(R.string.receiving_from, count, peer, transport)
+        setStatus(Tone.WORKING, getString(R.string.receiving_from, count, peer, transport))
         progress.visibility = View.VISIBLE
         progress.progress = 0
     }
@@ -434,11 +481,11 @@ class ReceiveActivity : Activity() {
     private fun onFinished(error: Exception?) {
         watchdog?.stop()
         if (closed) return
-        status.text = when {
+        setStatus(if (error == null) Tone.SUCCESS else Tone.ERROR, when {
             error == null -> getString(R.string.done_received)
             stalled -> getString(R.string.stalled, (STALL_LIMIT_MS / 1000).toInt())
             else -> getString(R.string.failed, error.message ?: error.javaClass.simpleName)
-        }
+        })
         if (error == null) {
             progress.progress = 1000
             vibrateSuccess()
@@ -451,7 +498,7 @@ class ReceiveActivity : Activity() {
         honeywellScanner?.setContinuous(false)
         if (cameraAllowed) {
             scanner?.start()
-            if (scanner?.hasFlash() == true) findViewById<Button>(R.id.btnTorch).visibility = View.VISIBLE
+            if (scanner?.hasFlash() == true) btnTorch.visibility = View.VISIBLE
         }
     }
 
@@ -466,7 +513,7 @@ class ReceiveActivity : Activity() {
         mainHandler.removeCallbacks(connectTimeout)
         progress.visibility = View.VISIBLE
         progress.progress = assembler.received * 1000 / assembler.count
-        status.text = getString(R.string.qr_frames, assembler.received, assembler.count, assembler.recovered)
+        setStatus(Tone.WORKING, getString(R.string.qr_frames, assembler.received, assembler.count, assembler.recovered))
         qrMap.visibility = View.VISIBLE
         qrMap.show(assembler)
         if (r != QrAssembler.Result.COMPLETE) return
@@ -476,7 +523,7 @@ class ReceiveActivity : Activity() {
 
         val bundle = assembler.bundle()
         if (bundle == null) {
-            status.setText(R.string.qr_corrupt)
+            setStatus(Tone.WARNING, getString(R.string.qr_corrupt))
             return
         }
         lastQrDone = assembler.crc
@@ -487,8 +534,10 @@ class ReceiveActivity : Activity() {
             val error = try { QrBundle.parse(bundle, sink); null } catch (e: Exception) { e }
             ui {
                 qrParsing = false
-                if (!closed) status.text = if (error == null) getString(R.string.done_received)
-                else getString(R.string.failed, error.message ?: error.javaClass.simpleName)
+                if (!closed) {
+                    if (error == null) setStatus(Tone.SUCCESS, getString(R.string.done_received))
+                    else setStatus(Tone.ERROR, getString(R.string.failed, error.message ?: error.javaClass.simpleName))
+                }
             }
         }
     }
@@ -503,33 +552,75 @@ class ReceiveActivity : Activity() {
 
     private fun addFile(name: String, location: String, uri: Uri?, mime: String) {
         if (closed) return
+        val card = resultCard(R.drawable.ic_file, name, getString(R.string.saved_to, location))
+        if (uri != null) {
+            card.addView(actionRow(
+                chip(R.string.open_file, R.drawable.ic_open) { openFile(uri, mime) },
+                chip(R.string.share_file, R.drawable.ic_share) { shareFile(uri, mime) },
+            ))
+        }
+        addResult(card)
+    }
+
+    /** Card for one received item: icon badge, title and a subtitle. Actions are appended by the caller. */
+    private fun resultCard(icon: Int, title: String, subtitle: String?): LinearLayout {
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(getColor(R.color.card))
-            setPadding(dp(12), dp(10), dp(12), dp(8))
+            background = getDrawable(R.drawable.bg_card_tonal)
+            setPadding(dp(16), dp(14), dp(16), dp(14))
         }
-        card.addView(TextView(this).apply {
-            text = getString(R.string.saved_to, name, location)
-            setTextColor(getColor(R.color.fg))
-            textSize = 15f
+        val head = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        head.addView(iconBadge(icon).apply { showBadge(icon, R.color.surface, R.color.accent) })
+        val texts = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, WRAP, 1f).apply { marginStart = dp(14) }
+        }
+        texts.addView(TextView(this, null, 0, R.style.Text_Subtitle).apply {
+            text = title
+            isSingleLine = true
+            ellipsize = TextUtils.TruncateAt.MIDDLE
         })
-        if (uri != null) {
-            val btnRow = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-            }
-            btnRow.addView(Button(this, null, android.R.attr.borderlessButtonStyle).apply {
-                setText(R.string.open_file)
-                setOnClickListener { openFile(uri, mime) }
+        if (!subtitle.isNullOrEmpty()) {
+            texts.addView(TextView(this, null, 0, R.style.Text_Caption).apply {
+                text = subtitle
+                isSingleLine = true
+                ellipsize = TextUtils.TruncateAt.MIDDLE
             })
-            btnRow.addView(Button(this, null, android.R.attr.borderlessButtonStyle).apply {
-                setText(R.string.share_file)
-                setOnClickListener { shareFile(uri, mime) }
-            })
-            card.addView(btnRow)
         }
-        results.addView(card, 0, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { bottomMargin = dp(8) })
+        head.addView(texts)
+        card.addView(head)
+        return card
+    }
+
+    private fun chip(label: Int, icon: Int, onClick: () -> Unit): Button =
+        Button(this, null, 0, R.style.Button_Chip).apply {
+            setText(label)
+            setCompoundDrawablesRelativeWithIntrinsicBounds(icon, 0, 0, 0)
+            setOnClickListener { onClick() }
+        }
+
+    /** Row of small action chips, aligned with the card's text column. */
+    private fun actionRow(vararg chips: Button): LinearLayout {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply {
+                topMargin = dp(12)
+                marginStart = dp(54)
+            }
+        }
+        chips.forEachIndexed { i, c ->
+            row.addView(c, LinearLayout.LayoutParams(WRAP, WRAP).apply { if (i > 0) marginStart = dp(8) })
+        }
+        return row
+    }
+
+    /** Newest result goes on top. */
+    private fun addResult(card: View) {
+        resultsLabel.visibility = View.VISIBLE
+        results.addView(card, 0, LinearLayout.LayoutParams(MATCH, WRAP).apply { bottomMargin = dp(10) })
     }
 
     private fun openFile(uri: Uri, mime: String) {
@@ -559,50 +650,42 @@ class ReceiveActivity : Activity() {
 
     private fun addText(text: String) {
         if (closed) return
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(getColor(R.color.card))
-            setPadding(dp(12), dp(12), dp(12), dp(4))
-        }
-        row.addView(TextView(this).apply {
+        val card = resultCard(R.drawable.ic_text, getString(R.string.received_text), null)
+        card.addView(TextView(this, null, 0, R.style.Text_Body).apply {
             this.text = text
             setTextColor(getColor(R.color.fg))
-            textSize = 15f
             setTextIsSelectable(true)
-        })
-        val btnRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-        }
-        btnRow.addView(Button(this, null, android.R.attr.borderlessButtonStyle).apply {
-            setText(R.string.copy)
-            setOnClickListener {
-                getSystemService(ClipboardManager::class.java)
-                    ?.setPrimaryClip(ClipData.newPlainText(getString(R.string.received_text), text))
-                Toast.makeText(this@ReceiveActivity, R.string.copied, Toast.LENGTH_SHORT).show()
+            maxLines = 12
+            ellipsize = TextUtils.TruncateAt.END
+            layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply {
+                topMargin = dp(10)
+                marginStart = dp(54)
             }
         })
-        val url = text.trim()
-        if (url.startsWith("http://", ignoreCase = true) || url.startsWith("https://", ignoreCase = true)) {
-            btnRow.addView(Button(this, null, android.R.attr.borderlessButtonStyle).apply {
-                setText(R.string.open_link)
-                setOnClickListener {
-                    try {
-                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                    } catch (_: Exception) {}
-                }
-            })
+        val copy = chip(R.string.copy, R.drawable.ic_copy) {
+            getSystemService(ClipboardManager::class.java)
+                ?.setPrimaryClip(ClipData.newPlainText(getString(R.string.received_text), text))
+            // Android 13+ shows its own "copied" confirmation.
+            if (Build.VERSION.SDK_INT < 33) Toast.makeText(this, R.string.copied, Toast.LENGTH_SHORT).show()
         }
-        row.addView(btnRow)
-        results.addView(row, 0, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { bottomMargin = dp(8) })
+        val url = text.trim()
+        val isLink = url.startsWith("http://", ignoreCase = true) || url.startsWith("https://", ignoreCase = true)
+        card.addView(
+            if (!isLink) actionRow(copy)
+            else actionRow(copy, chip(R.string.open_link, R.drawable.ic_link) {
+                try {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                } catch (_: Exception) {}
+            })
+        )
+        addResult(card)
     }
-
-    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
     private companion object {
         const val REQ_PERMS = 1
         const val CONNECT_TIMEOUT_MS = 15_000L
         const val WIFI_DIRECT_TIMEOUT_MS = 45_000L
+        const val MATCH = LinearLayout.LayoutParams.MATCH_PARENT
+        const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
     }
 }

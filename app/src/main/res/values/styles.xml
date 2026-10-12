@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ── Typography ───────────────────────────────────────────────────────────── -->
+
+    <style name="Text">
+        <item name="android:textColor">@color/fg</item>
+        <item name="android:fontFamily">sans-serif</item>
+    </style>
+
+    <style name="Text.Display">
+        <item name="android:textSize">30sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:letterSpacing">-0.02</item>
+        <item name="android:lineSpacingMultiplier">1.05</item>
+    </style>
+
+    <style name="Text.Title">
+        <item name="android:textSize">22sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:letterSpacing">-0.01</item>
+    </style>
+
+    <style name="Text.TitleSmall">
+        <item name="android:textSize">17sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
+    <style name="Text.Subtitle">
+        <item name="android:textSize">15sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
+    <style name="Text.Body">
+        <item name="android:textSize">15sp</item>
+        <item name="android:textColor">@color/muted</item>
+        <item name="android:lineSpacingExtra">3sp</item>
+    </style>
+
+    <style name="Text.Caption">
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/muted</item>
+        <item name="android:lineSpacingExtra">2sp</item>
+    </style>
+
+    <!-- Small all-caps section header -->
+    <style name="Text.Overline">
+        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">@color/muted</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:letterSpacing">0.1</item>
+        <item name="android:textAllCaps">true</item>
+    </style>
+
+    <!-- ── Buttons (pill shaped, flat, no shadow) ──────────────────────────────── -->
+
+    <style name="Button" parent="android:Widget.Material.Button">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">10dp</item>
+        <item name="android:minHeight">54dp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:paddingStart">24dp</item>
+        <item name="android:paddingEnd">24dp</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:letterSpacing">0.01</item>
+        <item name="android:stateListAnimator">@null</item>
+        <item name="android:drawablePadding">8dp</item>
+    </style>
+
+    <style name="Button.Filled">
+        <item name="android:background">@drawable/bg_btn_filled</item>
+        <item name="android:textColor">@color/btn_filled_fg</item>
+        <item name="android:drawableTint">@color/btn_filled_fg</item>
+    </style>
+
+    <style name="Button.Tonal">
+        <item name="android:background">@drawable/bg_btn_tonal</item>
+        <item name="android:textColor">@color/btn_tonal_fg</item>
+        <item name="android:drawableTint">@color/btn_tonal_fg</item>
+    </style>
+
+    <style name="Button.Outlined">
+        <item name="android:background">@drawable/bg_btn_outlined</item>
+        <item name="android:textColor">@color/btn_text_fg</item>
+        <item name="android:drawableTint">@color/btn_text_fg</item>
+    </style>
+
+    <style name="Button.Text">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_marginTop">0dp</item>
+        <item name="android:minHeight">40dp</item>
+        <item name="android:paddingStart">12dp</item>
+        <item name="android:paddingEnd">12dp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:background">@drawable/bg_btn_text</item>
+        <item name="android:textColor">@color/btn_text_fg</item>
+        <item name="android:drawableTint">@color/btn_text_fg</item>
+    </style>
+
+    <!-- Compact tonal action used inside cards (Open / Share / Copy) -->
+    <style name="Button.Chip" parent="Button.Tonal">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_marginTop">0dp</item>
+        <item name="android:minHeight">36dp</item>
+        <item name="android:paddingStart">14dp</item>
+        <item name="android:paddingEnd">16dp</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:drawablePadding">6dp</item>
+    </style>
+
+    <style name="Button.Dialog" parent="Button.Text">
+        <item name="android:minHeight">44dp</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">16dp</item>
+    </style>
+
+    <!-- Round icon-only button (back, close) -->
+    <style name="IconButton">
+        <item name="android:layout_width">48dp</item>
+        <item name="android:layout_height">48dp</item>
+        <item name="android:padding">12dp</item>
+        <item name="android:scaleType">centerInside</item>
+        <item name="android:background">@drawable/bg_btn_text</item>
+        <item name="android:tint">@color/fg</item>
+    </style>
+
+    <!-- Round icon button floating over the camera -->
+    <style name="IconButton.Scrim">
+        <item name="android:background">@drawable/bg_scrim_circle</item>
+        <item name="android:tint">#FFFFFF</item>
+    </style>
+
+    <!-- ── Containers ──────────────────────────────────────────────────────────── -->
+
+    <style name="Card">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">12dp</item>
+        <item name="android:background">@drawable/bg_card</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:padding">20dp</item>
+    </style>
+
+    <!-- Circle holding a status / item icon; recolour with backgroundTint + tint -->
+    <style name="IconBadge">
+        <item name="android:layout_width">40dp</item>
+        <item name="android:layout_height">40dp</item>
+        <item name="android:padding">9dp</item>
+        <item name="android:background">@drawable/bg_icon_circle</item>
+        <item name="android:tint">@color/on_accent_container</item>
+        <item name="android:scaleType">fitCenter</item>
+    </style>
+
+    <!-- Home screen: one of the three "Send …" tiles -->
+    <style name="HomeTile">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:minHeight">136dp</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:padding">16dp</item>
+        <item name="android:background">@drawable/bg_card_clickable</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+
+    <style name="HomeTileIcon" parent="IconBadge">
+        <item name="android:layout_width">44dp</item>
+        <item name="android:layout_height">44dp</item>
+        <item name="android:padding">11dp</item>
+        <item name="android:importantForAccessibility">no</item>
+    </style>
+
+    <style name="HomeTileTitle" parent="Text.Subtitle">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">16dp</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+    </style>
+
+    <style name="HomeTileCaption" parent="Text.Caption">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">2dp</item>
+        <item name="android:maxLines">2</item>
+        <item name="android:ellipsize">end</item>
+    </style>
+
+    <style name="HowStep">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">14dp</item>
+        <item name="android:orientation">horizontal</item>
+    </style>
+
+    <style name="HowStepNumber">
+        <item name="android:layout_width">26dp</item>
+        <item name="android:layout_height">26dp</item>
+        <item name="android:background">@drawable/bg_icon_circle</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textColor">@color/on_accent_container</item>
+        <item name="android:importantForAccessibility">no</item>
+    </style>
+
+    <style name="HowStepText" parent="Text.Body">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:layout_marginStart">12dp</item>
+        <item name="android:paddingTop">2dp</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <style name="Progress" parent="android:Widget.Material.ProgressBar.Horizontal">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">8dp</item>
+        <item name="android:minHeight">8dp</item>
+        <item name="android:maxHeight">8dp</item>
+        <item name="android:progressDrawable">@drawable/progress_bar</item>
+        <item name="android:max">1000</item>
+    </style>
+
+    <style name="Slider" parent="android:Widget.Material.SeekBar">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:paddingTop">8dp</item>
+        <item name="android:paddingBottom">8dp</item>
+        <!-- SeekBar insets its track by ~16dp for the thumb: line it up with the label above -->
+        <item name="android:layout_marginStart">-12dp</item>
+        <item name="android:layout_marginEnd">-12dp</item>
+        <item name="android:progressTint">@color/accent</item>
+        <item name="android:progressBackgroundTint">@color/outline</item>
+        <item name="android:thumbTint">@color/accent</item>
+    </style>
+
+    <style name="Input" parent="android:Widget.Material.EditText">
+        <item name="android:background">@drawable/bg_input</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">16dp</item>
+        <item name="android:paddingTop">14dp</item>
+        <item name="android:paddingBottom">14dp</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textColor">@color/fg</item>
+        <item name="android:textColorHint">@color/muted</item>
+        <item name="android:gravity">top|start</item>
+    </style>
+</resources>

@@ -6,7 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.text.InputType
-import android.widget.Button
+import android.view.View
 import android.widget.EditText
 import android.widget.FrameLayout
 import x.vladgba.sendanyway.R
@@ -17,7 +17,7 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        findViewById<Button>(R.id.btnSendFiles).setOnClickListener {
+        findViewById<View>(R.id.btnSendFiles).setOnClickListener {
             val pick = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                 addCategory(Intent.CATEGORY_OPENABLE)
                 type = "*/*"
@@ -26,15 +26,15 @@ class MainActivity : Activity() {
             @Suppress("DEPRECATION")
             startActivityForResult(pick, REQ_PICK)
         }
-        findViewById<Button>(R.id.btnSendFolder).setOnClickListener {
+        findViewById<View>(R.id.btnSendFolder).setOnClickListener {
             val pick = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
             @Suppress("DEPRECATION")
             startActivityForResult(pick, REQ_PICK_FOLDER)
         }
-        findViewById<Button>(R.id.btnSendText).setOnClickListener { askText() }
-        findViewById<Button>(R.id.btnReceive).setOnClickListener {
+        findViewById<View>(R.id.btnSendText).setOnClickListener { askText() }
+        findViewById<View>(R.id.btnReceive).setOnClickListener {
             startActivity(Intent(this, ReceiveActivity::class.java))
         }
     }
@@ -43,7 +43,8 @@ class MainActivity : Activity() {
         val input = EditText(this).apply {
             hint = getString(R.string.text_hint)
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
-            minLines = 3
+            minLines = 4
+            maxLines = 10
         }
         val clip = getSystemService(android.content.ClipboardManager::class.java)?.primaryClip
         val clipText = if (clip != null && clip.itemCount > 0) clip.getItemAt(0).text?.toString() else null
@@ -51,8 +52,8 @@ class MainActivity : Activity() {
             input.setText(clipText)
             input.setSelection(clipText.length)
         }
-        val pad = (20 * resources.displayMetrics.density).toInt()
-        val box = FrameLayout(this).apply { setPadding(pad, pad / 2, pad, 0); addView(input) }
+        val pad = dp(24)
+        val box = FrameLayout(this).apply { setPadding(pad, dp(8), pad, 0); addView(input) }
         AlertDialog.Builder(this)
             .setTitle(R.string.send_text)
             .setView(box)
