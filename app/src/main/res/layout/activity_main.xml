@@ -23,14 +23,20 @@
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <ImageView
+            <!-- Same artwork as the launcher icon. The 108dp adaptive canvas keeps its art in the
+                 middle 48dp, so it's drawn oversized and clipped by the 40dp tile. -->
+            <FrameLayout
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:background="@drawable/bg_logo"
-                android:importantForAccessibility="no"
-                android:padding="10dp"
-                android:src="@drawable/ic_send"
-                android:tint="@color/on_accent" />
+                android:background="@drawable/bg_logo">
+
+                <ImageView
+                    android:layout_width="62dp"
+                    android:layout_height="62dp"
+                    android:layout_gravity="center"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_launcher_fg" />
+            </FrameLayout>
 
             <TextView
                 style="@style/Text.TitleSmall"

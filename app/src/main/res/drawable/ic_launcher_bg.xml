@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Brand gradient (same as the Receive hero card). Literal colours: a launcher icon must not
+     change with the device's dark mode. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <solid android:color="#2E6BE6"/>
+    <gradient
+        android:angle="315"
+        android:endColor="#5B4BE0"
+        android:startColor="#2E6BE6" />
 </shape>

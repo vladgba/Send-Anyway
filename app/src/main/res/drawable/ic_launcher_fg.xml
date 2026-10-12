@@ -1,11 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- "Scan to send": a paper plane (send) inside rounded scan-frame corners (the Receive screen's
+     viewfinder). Everything stays inside the 66dp safe zone (21..87) of the 108dp adaptive canvas,
+     so no launcher mask clips it. Also used as the themed (monochrome) icon. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp" android:height="108dp"
-    android:viewportWidth="108" android:viewportHeight="108">
-    <!-- QR finder corner + paper plane -->
-    <path android:fillColor="#FFFFFF"
-        android:pathData="M32,32h18v18h-18z M36,36v10h10v-10z" android:fillType="evenOdd"/>
-    <path android:fillColor="#FFFFFF" android:pathData="M39,39h4v4h-4z"/>
-    <path android:fillColor="#FFFFFF"
-        android:pathData="M42,70 L78,52 L52,62 L54,76 L60,66 L70,74 Z"/>
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Scan frame: four rounded corner brackets, 30..78 -->
+    <path
+        android:pathData="M30,43 L30,39 A9,9 0 0,1 39,30 L43,30 M65,30 L69,30 A9,9 0 0,1 78,39 L78,43 M78,65 L78,69 A9,9 0 0,1 69,78 L65,78 M43,78 L39,78 A9,9 0 0,1 30,69 L30,65"
+        android:strokeWidth="4.5"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round" />
+
+    <!-- Paper plane (Material "send"), tilted up and centred in the frame -->
+    <group
+        android:pivotX="10"
+        android:pivotY="12"
+        android:rotation="-25"
+        android:scaleX="1.15"
+        android:scaleY="1.15"
+        android:translateX="44.5"
+        android:translateY="42">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M2.01,21L23,12 2.01,3 2,10l15,2 -15,2z" />
+    </group>
 </vector>
