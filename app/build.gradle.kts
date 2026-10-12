@@ -37,12 +37,11 @@ kotlin {
 }
 
 dependencies {
-    // QR encode/decode.
+    // The only runtime library: QR encode/decode.
     implementation("com.google.zxing:core:3.5.3")
-
-    // Honeywell AIDC hardware scanner SDK (for EDA51 / Mobility Edge devices)
-    implementation(files("libs/DataCollection.jar"))
 
     // Unit tests only (not shipped in the APK).
     testImplementation("junit:junit:4.13.2")
+    // Real org.json for JVM tests (android.jar only has stubs); P2P integration test.
+    testImplementation("org.json:json:20240303")
 }

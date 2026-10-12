@@ -18,7 +18,8 @@ import java.util.UUID
  * ```
  * u8  MAGIC (0xA5)      u8 TYPE_PAIRING (1)     u8 VERSION
  * u8[8]  sessionId      u8[32] key (AES-256)
- * u8  flags             bit0 = Bluetooth RFCOMM listening, bit1 = Wi-Fi Direct group
+ * u8  flags             bit0 = Bluetooth RFCOMM listening, bit1 = Wi-Fi Direct group,
+ *                       bit2 = sender is reachable through internet P2P (rendezvous room = hash of key)
  * str deviceName        (u16 length + UTF-8, max 64 bytes)
  * u16 lanPort           0 = no LAN server
  * u8  addressCount      then per address: u8 len (4 or 16) + bytes
@@ -33,6 +34,8 @@ class Pairing(
     val lanAddresses: List<ByteArray>,
     val bluetooth: Boolean,
     val wifiGroup: WifiGroup? = null,
+    /** Sender registered with the P2P rendezvous server (see transport/P2p.kt). */
+    val internet: Boolean = false,
 ) {
     /** RFCOMM service UUID for Bluetooth, unique per session. */
     val rfcommUuid: UUID get() = UUID.nameUUIDFromBytes("SendAnyway/rfcomm".toByteArray() + sessionId)
@@ -52,7 +55,8 @@ class Pairing(
             out.write(sessionId)
             out.write(key)
             out.writeByte(
-                (if (bluetooth) FLAG_BLUETOOTH else 0) or (if (wifiGroup != null) FLAG_WIFI_GROUP else 0)
+                (if (bluetooth) FLAG_BLUETOOTH else 0) or (if (wifiGroup != null) FLAG_WIFI_GROUP else 0) or
+                    (if (internet) FLAG_INTERNET else 0)
             )
             out.writeStr(deviceName, 64)
             out.writeShort(lanPort)
@@ -73,13 +77,14 @@ class Pairing(
     fun sameSession(other: Pairing?): Boolean = other != null && other.sessionId.contentEquals(sessionId)
 
     fun withWifiGroup(h: WifiGroup?, addresses: List<ByteArray>) =
-        Pairing(sessionId, key, deviceName, lanPort, addresses, bluetooth, h)
+        Pairing(sessionId, key, deviceName, lanPort, addresses, bluetooth, h, internet)
 
     companion object {
         const val SESSION_ID_LEN = 8
         const val KEY_LEN = 32
         private const val FLAG_BLUETOOTH = 1
         private const val FLAG_WIFI_GROUP = 2
+        private const val FLAG_INTERNET = 4 // older versions ignore unknown flag bits
 
         private val random = SecureRandom()
 
@@ -108,7 +113,7 @@ class Pairing(
                         ByteArray(len).also(inp::readFully)
                     }
                     val group = if (flags and FLAG_WIFI_GROUP != 0) WifiGroup(inp.readStr(), inp.readStr()) else null
-                    Pairing(id, key, name, port, addrs, flags and FLAG_BLUETOOTH != 0, group)
+                    Pairing(id, key, name, port, addrs, flags and FLAG_BLUETOOTH != 0, group, flags and FLAG_INTERNET != 0)
                 }
             } catch (e: IOException) {
                 null
