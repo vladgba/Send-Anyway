@@ -5,6 +5,7 @@ import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.IOException
+import java.util.zip.CRC32
 
 /**
  * Transfer protocol on top of [SecureChannel]. Every message is one encrypted frame whose
@@ -63,6 +64,7 @@ object Protocol {
         items: List<OutgoingItem>,
         listener: TransferListener,
         chunk: Int = DEFAULT_CHUNK,
+        window: Long = WINDOW,
     ) {
         require(chunk in 64..SecureChannel.MAX_PLAINTEXT - 1)
         ch.send(message(OFFER) {
@@ -70,11 +72,21 @@ object Protocol {
             writeShort(items.size)
             items.forEach { it.info.write(this) }
         })
-        expect(ch.receive(), ACCEPT)
+        val acceptMsg = ch.receive()
+        expect(acceptMsg, ACCEPT)
+        val offsets = if (acceptMsg.size > 1) {
+            val inp = body(acceptMsg)
+            val count = inp.readUnsignedShort()
+            LongArray(count) { inp.readLong() }
+        } else {
+            LongArray(items.size) { 0L }
+        }
 
         val total = items.map { it.info }.knownTotal()
-        var sent = 0L
-        var acked = 0L
+        var sent = offsets.sum()
+        var acked = sent
+        if (sent > 0) listener.onProgress(acked, maxOf(total, acked))
+
         val frame = ByteArray(chunk + 1)
         frame[0] = DATA.toByte()
 
@@ -86,17 +98,31 @@ object Protocol {
         }
 
         items.forEachIndexed { index, item ->
+            val offset = if (index < offsets.size) offsets[index] else 0L
+            val crc = CRC32()
             item.open().use { inp ->
+                if (offset > 0) {
+                    val buf = ByteArray(chunk)
+                    var remaining = offset
+                    while (remaining > 0) {
+                        val r = inp.read(buf, 0, minOf(buf.size.toLong(), remaining).toInt())
+                        if (r < 0) throw IOException("file shorter than resume offset")
+                        crc.update(buf, 0, r)
+                        remaining -= r
+                    }
+                }
                 while (true) {
                     val n = inp.read(frame, 1, chunk)
                     if (n < 0) break
                     if (n == 0) continue
+                    crc.update(frame, 1, n)
                     ch.send(frame, 0, n + 1)
                     sent += n
-                    while (sent - acked > WINDOW) readAck()
+                    while (sent - acked > window) readAck()
                 }
             }
-            ch.send(byteArrayOf(ITEM_END.toByte()))
+            val itemCrc = crc.value.toInt()
+            ch.send(message(ITEM_END) { writeInt(itemCrc) })
             listener.onItemDone(index, item.info)
         }
         ch.send(byteArrayOf(DONE.toByte()))
@@ -128,12 +154,34 @@ object Protocol {
         return Offer(peer, List(count) { ItemInfo.read(inp) })
     }
 
-    fun receive(ch: SecureChannel, offer: Offer, sink: ReceiveSink, listener: TransferListener) {
-        ch.send(byteArrayOf(ACCEPT.toByte()))
+    fun receive(
+        ch: SecureChannel,
+        offer: Offer,
+        sink: ReceiveSink,
+        listener: TransferListener,
+        ackEvery: Long = ACK_EVERY,
+    ) {
+        val offsets = LongArray(offer.items.size) { i -> sink.offset(i, offer.items[i]) }
+        if (offsets.any { it > 0 }) {
+            ch.send(message(ACCEPT) {
+                writeShort(offsets.size)
+                offsets.forEach { writeLong(it) }
+            })
+        } else {
+            ch.send(byteArrayOf(ACCEPT.toByte()))
+        }
+
         val total = offer.items.knownTotal()
-        var done = 0L
-        var lastAck = 0L
+        var done = offsets.sum()
+        var lastAck = done
+        if (done > 0) listener.onProgress(done, maxOf(total, done))
+
         offer.items.forEachIndexed { index, info ->
+            val offset = if (index < offsets.size) offsets[index] else 0L
+            val crc = CRC32()
+            if (offset > 0) {
+                sink.feedPrefix(index, info, offset, crc)
+            }
             var ok = false
             val out = sink.open(index, info)
             try {
@@ -142,14 +190,23 @@ object Protocol {
                     when (type(m)) {
                         DATA -> {
                             out.write(m, 1, m.size - 1)
+                            crc.update(m, 1, m.size - 1)
                             done += m.size - 1
                             listener.onProgress(done, maxOf(total, done))
-                            if (done - lastAck >= ACK_EVERY) {
+                            if (done - lastAck >= ackEvery) {
                                 ch.send(message(ACK) { writeLong(done) })
                                 lastAck = done
                             }
                         }
-                        ITEM_END -> break
+                        ITEM_END -> {
+                            if (m.size >= 5) {
+                                val expectedCrc = body(m).readInt()
+                                if (crc.value.toInt() != expectedCrc) {
+                                    throw IOException("CRC32 mismatch for ${info.name}: expected $expectedCrc, got ${crc.value.toInt()}")
+                                }
+                            }
+                            break
+                        }
                         else -> expect(m, DATA)
                     }
                 }

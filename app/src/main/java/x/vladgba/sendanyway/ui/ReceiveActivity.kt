@@ -2,9 +2,13 @@ package x.vladgba.sendanyway.ui
 
 import android.Manifest
 import android.app.Activity
+import android.content.BroadcastReceiver
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -27,6 +31,7 @@ import x.vladgba.sendanyway.core.TransferListener
 import x.vladgba.sendanyway.core.Wire
 import x.vladgba.sendanyway.data.Device
 import x.vladgba.sendanyway.data.DownloadSink
+import x.vladgba.sendanyway.qr.HoneywellScanner
 import x.vladgba.sendanyway.qr.QrScanner
 import x.vladgba.sendanyway.service.TransferService
 import x.vladgba.sendanyway.transport.Bluetooth
@@ -55,6 +60,10 @@ class ReceiveActivity : Activity() {
     private val app by lazy { applicationContext }
 
     private var scanner: QrScanner? = null
+    private var honeywellScanner: HoneywellScanner? = null
+    private var isUsingHoneywell = false
+    private var honeywellPanel: View? = null
+    private var btnToggleScannerMode: Button? = null
     private var cameraAllowed = false
     private var pairing: Pairing? = null
     private var lanClient: LanClient? = null
@@ -97,42 +106,134 @@ class ReceiveActivity : Activity() {
         btnCopyPassword.setOnClickListener { manualPassword?.let { copySecret(getString(R.string.wifi_password), it) } }
         myName = Device.name(this)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        honeywellPanel = findViewById(R.id.honeywellPanel)
+        btnToggleScannerMode = findViewById(R.id.btnToggleScannerMode)
+        btnToggleScannerMode?.setOnClickListener { toggleScannerMode() }
+
+        if (HoneywellScanner.isHoneywell()) {
+            isUsingHoneywell = true
+            honeywellPanel?.visibility = View.VISIBLE
+            preview.visibility = View.GONE
+            findViewById<View>(R.id.focusHint).visibility = View.GONE
+            findViewById<View>(R.id.btnTorch).visibility = View.GONE
+            status.setText(R.string.honeywell_ready)
+            honeywellScanner = runCatching {
+                HoneywellScanner(this, ::onCode) { ready ->
+                    if (ready && isUsingHoneywell) {
+                        status.setText(R.string.honeywell_ready)
+                    }
+                }
+            }.getOrNull()
+        } else {
+            honeywellScanner = runCatching { HoneywellScanner(this, ::onCode) }.getOrNull()
+        }
 
         val wanted = (arrayOf(Manifest.permission.CAMERA) + Bluetooth.permissions(server = false) +
             (if (WifiDirect.supported(this)) WifiDirect.permissions() else emptyArray()) +
             notificationPermission()).distinct().toTypedArray()
         val missing = missingPermissions(wanted)
-        if (missing.isEmpty()) onCameraAllowed() else requestPermissions(missing, REQ_PERMS)
+        if (missing.isEmpty()) {
+            if (!isUsingHoneywell) onCameraAllowed()
+        } else {
+            requestPermissions(missing, REQ_PERMS)
+        }
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         if (requestCode != REQ_PERMS) return
         if (checkSelfPermission(Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            if (!isUsingHoneywell) onCameraAllowed()
+        } else if (!isUsingHoneywell) {
+            status.setText(R.string.camera_needed)
+        }
+    }
+
+    private fun toggleScannerMode() {
+        if (isUsingHoneywell) {
+            isUsingHoneywell = false
+            honeywellScanner?.onPause()
+            honeywellPanel?.visibility = View.GONE
+            preview.visibility = View.VISIBLE
+            findViewById<View>(R.id.focusHint).visibility = View.VISIBLE
+            btnToggleScannerMode?.setText(R.string.switch_to_hardware_scanner)
             onCameraAllowed()
         } else {
-            status.setText(R.string.camera_needed)
+            isUsingHoneywell = true
+            scanner?.stop()
+            preview.visibility = View.GONE
+            findViewById<View>(R.id.focusHint).visibility = View.GONE
+            findViewById<View>(R.id.btnTorch).visibility = View.GONE
+            honeywellPanel?.visibility = View.VISIBLE
+            btnToggleScannerMode?.setText(R.string.switch_to_camera)
+            status.setText(R.string.honeywell_ready)
+            honeywellScanner?.onResume()
         }
     }
 
     private fun onCameraAllowed() {
         cameraAllowed = true
         val focusHint = findViewById<TextView>(R.id.focusHint)
-        scanner = QrScanner(
-            this, preview, ::onCode,
-            onError = { msg -> status.text = getString(R.string.failed, msg) },
-            onFocusLock = { locked -> focusHint.setText(if (locked) R.string.focus_locked else R.string.tap_to_focus) },
-        )
-        preview.setOnClickListener { scanner?.refocus() }
-        if (!transferring) scanner?.start()
+        val btnTorch = findViewById<Button>(R.id.btnTorch)
+        if (scanner == null) {
+            scanner = QrScanner(
+                this, preview, ::onCode,
+                onError = { msg -> status.text = getString(R.string.failed, msg) },
+                onFocusLock = { locked -> focusHint.setText(if (locked) R.string.focus_locked else R.string.tap_to_focus) },
+            )
+            preview.setOnClickListener { scanner?.refocus() }
+            btnTorch.setOnClickListener {
+                scanner?.toggleTorch { on ->
+                    btnTorch.setText(if (on) R.string.torch_off else R.string.torch)
+                }
+            }
+        }
+        if (!transferring && !isUsingHoneywell) {
+            scanner?.start()
+            if (scanner?.hasFlash() == true) btnTorch.visibility = View.VISIBLE
+        }
+    }
+
+    private val hardwareScannerReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            intent ?: return
+            val raw = intent.getByteArrayExtra("dataBytes")
+                ?: intent.getByteArrayExtra("barcode_data")
+                ?: intent.getByteArrayExtra("com.symbol.datawedge.data_binary")
+                ?: intent.getStringExtra("data")?.toByteArray(Charsets.ISO_8859_1)
+                ?: intent.getStringExtra("com.symbol.datawedge.data_string")?.toByteArray(Charsets.ISO_8859_1)
+            if (raw != null && raw.isNotEmpty()) {
+                onCode(raw)
+            }
+        }
     }
 
     override fun onResume() {
         super.onResume()
-        if (cameraAllowed && !transferring) scanner?.start()
+        if (isUsingHoneywell) {
+            honeywellScanner?.onResume()
+        } else if (cameraAllowed && !transferring) {
+            scanner?.start()
+        }
+        val filter = IntentFilter().apply {
+            addAction("com.honeywell.decode.intent.action.DECODE_DATA")
+            addAction("x.vladgba.sendanyway.SCAN")
+            addAction("com.symbol.datawedge.action.RESULT")
+            addAction("com.symbol.datawedge.data")
+            addAction("android.intent.action.SCAN_RESULT")
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(hardwareScannerReceiver, filter, Context.RECEIVER_EXPORTED)
+        } else {
+            registerReceiver(hardwareScannerReceiver, filter)
+        }
     }
 
     override fun onPause() {
         super.onPause()
+        if (isUsingHoneywell) {
+            honeywellScanner?.onPause()
+        }
+        runCatching { unregisterReceiver(hardwareScannerReceiver) }
         scanner?.stop()
     }
 
@@ -140,6 +241,8 @@ class ReceiveActivity : Activity() {
         super.onDestroy()
         closed = true
         mainHandler.removeCallbacks(connectTimeout)
+        honeywellScanner?.onDestroy()
+        honeywellScanner = null
         scanner?.stop()
         stopClients() // a Wi-Fi Direct group carrying the active link stays up until that link closes
         if (transferring && TransferService.isActive) return // keep going in the background
@@ -158,9 +261,16 @@ class ReceiveActivity : Activity() {
                 val p = Pairing.decode(bytes) ?: return
                 lastPairingBytes = bytes
                 if (claimed.get()) return
+                vibrateTick()
                 connect(p)
             }
-            Wire.TYPE_QR_DATA -> onFrame(bytes)
+            Wire.TYPE_QR_DATA -> {
+                if (!assembler.active) {
+                    vibrateTick()
+                    honeywellScanner?.setContinuous(true)
+                }
+                onFrame(bytes)
+            }
             else -> {
                 val now = SystemClock.uptimeMillis()
                 if (pairing == null && !assembler.active && now - lastHint > 3000) {
@@ -277,7 +387,7 @@ class ReceiveActivity : Activity() {
                         TransferService.progress(app, done, total, app.getString(R.string.receiving_progress, formatSize(done), formatSize(total), meter.speed()))
                         if (throttle.ready(done == total)) ui { showProgress(done, total) }
                     }
-                })
+                }, ackEvery = link.ackEvery)
                 TransferService.end(app, app.getString(R.string.notif_received), app.getString(R.string.notif_received_text, offer.items.size, offer.peerName))
                 ui { onFinished(null) }
             } catch (e: Exception) {
@@ -296,8 +406,10 @@ class ReceiveActivity : Activity() {
         TransferService.begin(this, getString(R.string.notif_receiving, peer), getString(R.string.receiving_from, count, peer, link.transport), link)
         transferring = true
         stalled = false
+        findViewById<Button>(R.id.btnTorch).visibility = View.GONE
         btnWifi.visibility = View.GONE
         btnCopyPassword.visibility = View.GONE
+        vibrateTick()
         meter = TransferMeter()
         watchdog = StallWatchdog(meter, STALL_LIMIT_MS) {
             stalled = true
@@ -306,6 +418,7 @@ class ReceiveActivity : Activity() {
         val transport = if (link.detail.isEmpty()) link.transport else "${link.transport} (${link.detail})"
         mainHandler.removeCallbacks(connectTimeout)
         scanner?.stop()
+        honeywellScanner?.setContinuous(false)
         status.text = getString(R.string.receiving_from, count, peer, transport)
         progress.visibility = View.VISIBLE
         progress.progress = 0
@@ -326,13 +439,20 @@ class ReceiveActivity : Activity() {
             stalled -> getString(R.string.stalled, (STALL_LIMIT_MS / 1000).toInt())
             else -> getString(R.string.failed, error.message ?: error.javaClass.simpleName)
         }
-        if (error == null) progress.progress = 1000
+        if (error == null) {
+            progress.progress = 1000
+            vibrateSuccess()
+        }
         transferring = false
         activeLink = null
         pairing = null
         lastPairingBytes = null
         claimed.set(false)
-        if (cameraAllowed) scanner?.start()
+        honeywellScanner?.setContinuous(false)
+        if (cameraAllowed) {
+            scanner?.start()
+            if (scanner?.hasFlash() == true) findViewById<Button>(R.id.btnTorch).visibility = View.VISIBLE
+        }
     }
 
     // ---- QR slideshow -----------------------------------------------------------------------
@@ -351,6 +471,8 @@ class ReceiveActivity : Activity() {
         qrMap.show(assembler)
         if (r != QrAssembler.Result.COMPLETE) return
         qrMap.visibility = View.GONE
+        vibrateSuccess()
+        honeywellScanner?.setContinuous(false)
 
         val bundle = assembler.bundle()
         if (bundle == null) {
@@ -376,17 +498,63 @@ class ReceiveActivity : Activity() {
     private fun sink() = DownloadSink(
         this,
         onText = { text -> ui { addText(text) } },
-        onFile = { name, location -> ui { addFile(name, location) } },
+        onFile = { name, location, uri, mime -> ui { addFile(name, location, uri, mime) } },
     )
 
-    private fun addFile(name: String, location: String) {
+    private fun addFile(name: String, location: String, uri: Uri?, mime: String) {
         if (closed) return
-        results.addView(TextView(this).apply {
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(getColor(R.color.card))
+            setPadding(dp(12), dp(10), dp(12), dp(8))
+        }
+        card.addView(TextView(this).apply {
             text = getString(R.string.saved_to, name, location)
             setTextColor(getColor(R.color.fg))
             textSize = 15f
-            setPadding(0, dp(8), 0, dp(8))
-        }, 0)
+        })
+        if (uri != null) {
+            val btnRow = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+            }
+            btnRow.addView(Button(this, null, android.R.attr.borderlessButtonStyle).apply {
+                setText(R.string.open_file)
+                setOnClickListener { openFile(uri, mime) }
+            })
+            btnRow.addView(Button(this, null, android.R.attr.borderlessButtonStyle).apply {
+                setText(R.string.share_file)
+                setOnClickListener { shareFile(uri, mime) }
+            })
+            card.addView(btnRow)
+        }
+        results.addView(card, 0, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { bottomMargin = dp(8) })
+    }
+
+    private fun openFile(uri: Uri, mime: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, mime.ifEmpty { "*/*" })
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(Intent.createChooser(intent, getString(R.string.open_file)))
+        } catch (_: Exception) {
+            Toast.makeText(this, R.string.no_app_to_open, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun shareFile(uri: Uri, mime: String) {
+        try {
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                putExtra(Intent.EXTRA_STREAM, uri)
+                type = mime.ifEmpty { "*/*" }
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(Intent.createChooser(intent, getString(R.string.share_file)))
+        } catch (e: Exception) {
+            Toast.makeText(this, e.message ?: "Cannot share", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun addText(text: String) {
@@ -402,7 +570,10 @@ class ReceiveActivity : Activity() {
             textSize = 15f
             setTextIsSelectable(true)
         })
-        row.addView(Button(this, null, android.R.attr.borderlessButtonStyle).apply {
+        val btnRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+        btnRow.addView(Button(this, null, android.R.attr.borderlessButtonStyle).apply {
             setText(R.string.copy)
             setOnClickListener {
                 getSystemService(ClipboardManager::class.java)
@@ -410,6 +581,18 @@ class ReceiveActivity : Activity() {
                 Toast.makeText(this@ReceiveActivity, R.string.copied, Toast.LENGTH_SHORT).show()
             }
         })
+        val url = text.trim()
+        if (url.startsWith("http://", ignoreCase = true) || url.startsWith("https://", ignoreCase = true)) {
+            btnRow.addView(Button(this, null, android.R.attr.borderlessButtonStyle).apply {
+                setText(R.string.open_link)
+                setOnClickListener {
+                    try {
+                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                    } catch (_: Exception) {}
+                }
+            })
+        }
+        row.addView(btnRow)
         results.addView(row, 0, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply { bottomMargin = dp(8) })

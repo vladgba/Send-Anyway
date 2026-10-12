@@ -23,6 +23,29 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp" />
 
+        <LinearLayout
+            android:id="@+id/itemsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="6dp">
+
+            <Button
+                android:id="@+id/btnAddMore"
+                style="?android:attr/borderlessButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/add_more_files"
+                android:textColor="@color/fg"
+                android:textSize="13sp" />
+
+            <LinearLayout
+                android:id="@+id/itemsList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+        </LinearLayout>
+
         <ImageView
             android:id="@+id/qr"
             android:layout_width="match_parent"

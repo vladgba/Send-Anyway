@@ -73,4 +73,18 @@
     <string name="tap_to_focus">Tap to refocus</string>
     <string name="focus_locked">Focus locked · tap to refocus</string>
     <string name="not_ours">This is not a Send Anyway code</string>
+    <string name="send_folder">Send folder</string>
+    <string name="open_file">Open</string>
+    <string name="share_file">Share</string>
+    <string name="open_link">Open link</string>
+    <string name="paste_clipboard">Paste from clipboard</string>
+    <string name="torch">Torch</string>
+    <string name="torch_off">Torch off</string>
+    <string name="no_app_to_open">No app found to open this file</string>
+    <string name="add_more_files">+ Add files</string>
+    <string name="large_transfer_battery">Large transfer: tap to disable battery optimization</string>
+    <string name="honeywell_ready">Honeywell hardware scanner ready</string>
+    <string name="honeywell_hint">Point scanner at QR code and press the yellow SCAN button</string>
+    <string name="switch_to_camera">Switch to Camera</string>
+    <string name="switch_to_hardware_scanner">Switch to Hardware Scanner</string>
 </resources>

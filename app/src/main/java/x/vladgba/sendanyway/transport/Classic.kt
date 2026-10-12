@@ -35,7 +35,7 @@ object Classic {
 
     /** RFCOMM is a plain stream; 16 KB frames keep progress smooth with little overhead. */
     internal fun link(socket: BluetoothSocket): Link =
-        Link(TRANSPORT_BT, socket.inputStream, socket.outputStream, socket, chunk = 16 * 1024)
+        Link(TRANSPORT_BT, socket.inputStream, socket.outputStream, socket, chunk = 16 * 1024, window = 256 * 1024L, ackEvery = 32 * 1024L)
 }
 
 /** Sender side: listens on the session's RFCOMM service UUID. */

@@ -109,3 +109,43 @@ internal fun Activity.copySecret(label: String, text: String) {
 /** Needed on Android 13+ to show the transfer progress notification (the transfer works without it). */
 internal fun notificationPermission(): Array<String> =
     if (android.os.Build.VERSION.SDK_INT >= 33) arrayOf(android.Manifest.permission.POST_NOTIFICATIONS) else emptyArray()
+
+@Suppress("DEPRECATION")
+internal fun android.content.Context.vibrateTick() {
+    val v = getSystemService(android.os.Vibrator::class.java) ?: return
+    try {
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            v.vibrate(android.os.VibrationEffect.createPredefined(android.os.VibrationEffect.EFFECT_TICK))
+        } else if (android.os.Build.VERSION.SDK_INT >= 26) {
+            v.vibrate(android.os.VibrationEffect.createOneShot(20, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+        } else {
+            v.vibrate(20)
+        }
+    } catch (_: Exception) {}
+}
+
+@Suppress("DEPRECATION")
+internal fun android.content.Context.vibrateSuccess() {
+    val v = getSystemService(android.os.Vibrator::class.java) ?: return
+    try {
+        if (android.os.Build.VERSION.SDK_INT >= 26) {
+            v.vibrate(android.os.VibrationEffect.createWaveform(longArrayOf(0, 40, 60, 80), -1))
+        } else {
+            v.vibrate(longArrayOf(0, 40, 60, 80), -1)
+        }
+    } catch (_: Exception) {}
+}
+
+internal fun Activity.checkBatteryOptimization() {
+    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M) return
+    val pm = getSystemService(android.os.PowerManager::class.java) ?: return
+    if (!pm.isIgnoringBatteryOptimizations(packageName)) {
+        try {
+            startActivity(
+                android.content.Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                    .setData(android.net.Uri.parse("package:$packageName"))
+            )
+        } catch (_: Exception) {}
+    }
+}
+

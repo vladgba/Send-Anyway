@@ -49,7 +49,7 @@ import kotlin.concurrent.thread
  */
 class SendActivity : Activity() {
 
-    private lateinit var items: List<OutgoingItem>
+    private var items = ArrayList<OutgoingItem>()
     private lateinit var myName: String
 
     private lateinit var qrView: ImageView
@@ -63,6 +63,8 @@ class SendActivity : Activity() {
     private lateinit var frameSize: SeekBar
     private lateinit var speedLabel: TextView
     private lateinit var speed: SeekBar
+    private lateinit var itemsContainer: View
+    private lateinit var itemsList: LinearLayout
 
     private val app by lazy { applicationContext }
     private var sessionId: ByteArray? = null
@@ -119,14 +121,19 @@ class SendActivity : Activity() {
         speed = findViewById(R.id.speed)
 
         myName = Device.name(this)
-        items = collectItems()
-        if (items.isEmpty()) {
-            Toast.makeText(this, R.string.nothing_to_send, Toast.LENGTH_SHORT).show()
-            finish()
-            return
+        items = ArrayList(collectItems())
+        itemsContainer = findViewById(R.id.itemsContainer)
+        itemsList = findViewById(R.id.itemsList)
+        findViewById<Button>(R.id.btnAddMore).setOnClickListener {
+            val pick = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                type = "*/*"
+                putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+            }
+            @Suppress("DEPRECATION")
+            startActivityForResult(pick, REQ_PICK_MORE)
         }
-        findViewById<TextView>(R.id.summary).text =
-            getString(R.string.items_summary, items.size, formatSize(items.map { it.info }.knownTotal()))
+        if (!updateSummaryAndList()) return
 
         val dm = resources.displayMetrics
         val side = minOf(dm.widthPixels - (40 * dm.density).toInt(), (dm.heightPixels * 0.55).toInt())
@@ -145,13 +152,66 @@ class SendActivity : Activity() {
         if (missing.isNotEmpty()) requestPermissions(missing, REQ_PERMS) else startSession()
     }
 
+    private fun updateSummaryAndList(): Boolean {
+        if (items.isEmpty()) {
+            Toast.makeText(this, R.string.nothing_to_send, Toast.LENGTH_SHORT).show()
+            finish()
+            return false
+        }
+        val total = items.map { it.info }.knownTotal()
+        findViewById<TextView>(R.id.summary).text =
+            getString(R.string.items_summary, items.size, formatSize(total))
+        itemsList.removeAllViews()
+        for (i in 0 until items.size) {
+            val item = items[i]
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                setPadding(0, dp(2), 0, dp(2))
+            }
+            val tv = TextView(this).apply {
+                text = "${item.info.name} (${formatSize(item.info.size)})"
+                setTextColor(getColor(R.color.fg))
+                textSize = 13f
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            }
+            val btnRemove = Button(this, null, android.R.attr.borderlessButtonStyle).apply {
+                text = "✕"
+                textSize = 14f
+                setOnClickListener {
+                    items.removeAt(i)
+                    bundle = null
+                    slicer = null
+                    if (updateSummaryAndList()) refreshPairing()
+                }
+            }
+            row.addView(tv)
+            row.addView(btnRemove)
+            itemsList.addView(row)
+        }
+        return true
+    }
+
     @Deprecated("Framework Activity API")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         @Suppress("DEPRECATION")
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == REQ_DISCOVERABLE) {
-            discoverable = resultCode != RESULT_CANCELED
-            refreshPairing()
+        when (requestCode) {
+            REQ_DISCOVERABLE -> {
+                discoverable = resultCode != RESULT_CANCELED
+                refreshPairing()
+            }
+            REQ_PICK_MORE -> {
+                if (resultCode != RESULT_OK || data == null) return
+                val uris = ArrayList<Uri>()
+                data.clipData?.let { clip -> for (i in 0 until clip.itemCount) clip.getItemAt(i).uri?.let(uris::add) }
+                if (uris.isEmpty()) data.data?.let(uris::add)
+                uris.forEach { items.add(UriItem(contentResolver, it)) }
+                bundle = null
+                slicer = null
+                updateSummaryAndList()
+                refreshPairing()
+            }
         }
     }
 
@@ -298,7 +358,7 @@ class SendActivity : Activity() {
                         TransferService.progress(app, done, total, app.getString(R.string.sending_progress, formatSize(done), formatSize(total), meter.speed()))
                         if (throttle.ready(done == total)) ui { showProgress(done, total) }
                     }
-                }, chunk = link.chunk)
+                }, chunk = link.chunk, window = link.window)
                 TransferService.end(app, app.getString(R.string.notif_sent), app.getString(R.string.done_sent, peer))
                 ui { onDone(peer) }
             } catch (e: Exception) {
@@ -333,6 +393,10 @@ class SendActivity : Activity() {
         controls.visibility = View.GONE
         btnMode.visibility = View.GONE
         btnDirect.visibility = View.GONE
+        itemsContainer.visibility = View.GONE
+        vibrateTick()
+        val total = items.map { it.info }.knownTotal()
+        if (total > 100 * 1024 * 1024L) checkBatteryOptimization()
         val via = if (link.detail.isEmpty()) link.transport else "${link.transport} (${link.detail})"
         status.text = getString(R.string.connected_to, peer, via)
         channels.text = ""
@@ -352,6 +416,7 @@ class SendActivity : Activity() {
         progress.progress = 1000
         status.text = getString(R.string.done_sent, peer)
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        vibrateSuccess()
     }
 
     private fun onFailed(e: Exception) {
@@ -407,13 +472,13 @@ class SendActivity : Activity() {
         mainHandler.post(tick)
     }
 
-    private fun chunkSize() = 200 + frameSize.progress * 100      // 200..2000 bytes
-    private fun fps() = 1 + speed.progress                         // 1..15 frames/s
+    private fun chunkSize() = 200 + frameSize.progress * 100      // 200..2900 bytes
+    private fun fps() = 1 + speed.progress                         // 1..30 frames/s
 
     private fun setupSlideshowControls() {
-        frameSize.max = 18
+        frameSize.max = 27       // up to 2900 bytes
         frameSize.progress = 4   // 600 bytes: dense enough, still easy for most cameras
-        speed.max = 14
+        speed.max = 29           // up to 30 fps
         speed.progress = 4       // 5 fps
         frameSizeLabel.text = getString(R.string.frame_size, chunkSize())
         speedLabel.text = getString(R.string.speed, fps())
@@ -451,6 +516,7 @@ class SendActivity : Activity() {
                     intent.parcelableList<Uri>(Intent.EXTRA_STREAM)?.forEach { out += UriItem(contentResolver, it) }
                 else -> {
                     intent.parcelableList<Uri>(EXTRA_URIS)?.forEach { out += UriItem(contentResolver, it) }
+                    intent.parcelable<Uri>(EXTRA_TREE_URI)?.let { out += x.vladgba.sendanyway.data.TreeWalker.walk(contentResolver, it) }
                     intent.getStringExtra(Intent.EXTRA_TEXT)?.let { out += TextItem(it) }
                 }
             }
@@ -468,11 +534,15 @@ class SendActivity : Activity() {
     private inline fun <reified T : Parcelable> Intent.parcelableList(key: String): List<T>? =
         if (Build.VERSION.SDK_INT >= 33) getParcelableArrayListExtra(key, T::class.java) else getParcelableArrayListExtra(key)
 
+    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+
     companion object {
         const val EXTRA_URIS = "x.vladgba.sendanyway.URIS"
+        const val EXTRA_TREE_URI = "x.vladgba.sendanyway.TREE_URI"
         private const val REQ_PERMS = 1
         private const val REQ_WIFI_DIRECT = 2
         private const val REQ_DISCOVERABLE = 3
+        private const val REQ_PICK_MORE = 4
         private const val QR_WARN_BYTES = 256 * 1024
     }
 }

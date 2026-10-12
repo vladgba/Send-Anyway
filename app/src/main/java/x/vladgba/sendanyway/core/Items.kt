@@ -5,6 +5,7 @@ import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.InputStream
 import java.io.OutputStream
+import java.util.zip.CRC32
 
 /** Description of one transferred item. [size] is -1 when unknown up front (stream transports only). */
 class ItemInfo(val kind: Int, val name: String, val mime: String, val size: Long) {
@@ -46,6 +47,12 @@ class TextItem(text: String) : OutgoingItem {
 
 /** Where received items go. [finish] is always called after [open], with ok=false on failure. */
 interface ReceiveSink {
+    /** Existing bytes on disk for this item if resuming an interrupted transfer. */
+    fun offset(index: Int, info: ItemInfo): Long = 0L
+
+    /** Seeds the checksum with the prefix bytes already on disk before resuming. */
+    fun feedPrefix(index: Int, info: ItemInfo, offset: Long, crc: CRC32) {}
+
     fun open(index: Int, info: ItemInfo): OutputStream
     fun finish(index: Int, info: ItemInfo, ok: Boolean)
 }

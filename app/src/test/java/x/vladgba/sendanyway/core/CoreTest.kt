@@ -205,4 +205,110 @@ class CoreTest {
         assertEquals(QrAssembler.Result.IGNORED, asm.offer(byteArrayOf(0xA5.toByte(), 2, 0)))
         assertNull(asm.bundle())
     }
+
+    @Test
+    fun resumableTransferWithCrcValidation() {
+        val (id, key) = Pairing.newSecrets()
+        val (a, b) = pipePair()
+        val data = randomBytes(100_000, 42)
+        val items = listOf(BytesItem("test.bin", data))
+
+        val prefixSize = 40_000
+        val prefix = data.copyOf(prefixSize)
+        val resumedSink = object : ReceiveSink {
+            val bos = ByteArrayOutputStream().apply { write(prefix) }
+            var finishedOk = false
+
+            override fun offset(index: Int, info: ItemInfo): Long = prefixSize.toLong()
+
+            override fun feedPrefix(index: Int, info: ItemInfo, offset: Long, crc: java.util.zip.CRC32) {
+                crc.update(prefix, 0, offset.toInt())
+            }
+
+            override fun open(index: Int, info: ItemInfo): OutputStream = bos
+
+            override fun finish(index: Int, info: ItemInfo, ok: Boolean) {
+                finishedOk = ok
+            }
+        }
+
+        var senderError: Throwable? = null
+        val sender = thread {
+            try {
+                val ch = SecureChannel(key, id, initiator = false, input = a.first, output = a.second)
+                Protocol.readHello(ch)
+                Protocol.send(ch, "sender", items, object : TransferListener {})
+            } catch (t: Throwable) { senderError = t }
+        }
+
+        val ch = SecureChannel(key, id, initiator = true, input = b.first, output = b.second)
+        val offer = Protocol.requestOffer(ch, "receiver")
+        Protocol.receive(ch, offer, resumedSink, object : TransferListener {})
+
+        sender.join(5000)
+        senderError?.let { throw it }
+        assertTrue(resumedSink.finishedOk)
+        assertArrayEquals(data, resumedSink.bos.toByteArray())
+    }
+
+    @Test
+    fun corruptedResumeFailsCrc() {
+        val (id, key) = Pairing.newSecrets()
+        val (a, b) = pipePair()
+        val data = randomBytes(100_000, 42)
+        val items = listOf(BytesItem("test.bin", data))
+
+        val prefixSize = 40_000
+        val corruptedPrefix = randomBytes(prefixSize, 99) // different bytes!
+        val badSink = object : ReceiveSink {
+            val bos = ByteArrayOutputStream().apply { write(corruptedPrefix) }
+            var finishedOk: Boolean? = null
+
+            override fun offset(index: Int, info: ItemInfo): Long = prefixSize.toLong()
+
+            override fun feedPrefix(index: Int, info: ItemInfo, offset: Long, crc: java.util.zip.CRC32) {
+                crc.update(corruptedPrefix, 0, offset.toInt())
+            }
+
+            override fun open(index: Int, info: ItemInfo): OutputStream = bos
+
+            override fun finish(index: Int, info: ItemInfo, ok: Boolean) {
+                finishedOk = ok
+            }
+        }
+
+        thread {
+            try {
+                val ch = SecureChannel(key, id, initiator = false, input = a.first, output = a.second)
+                Protocol.readHello(ch)
+                Protocol.send(ch, "sender", items, object : TransferListener {})
+            } catch (_: Throwable) {}
+        }
+
+        val ch = SecureChannel(key, id, initiator = true, input = b.first, output = b.second)
+        val offer = Protocol.requestOffer(ch, "receiver")
+        try {
+            Protocol.receive(ch, offer, badSink, object : TransferListener {})
+            fail("should fail due to CRC32 mismatch")
+        } catch (e: Exception) {
+            assertTrue(e.message?.contains("CRC32 mismatch") == true)
+        }
+        assertEquals(false, badSink.finishedOk)
+    }
+
+    @Test
+    fun testLargeQrChunk() {
+        val data = ByteArray(10_000) { it.toByte() }
+        val slicer = QrSlicer(data, 2900)
+        assertEquals(4, slicer.count)
+        val frame = slicer.frameAt(0)
+        assertEquals(2900 + 16, frame.size)
+        val asm = QrAssembler()
+        for (i in 0 until slicer.count) {
+            asm.offer(slicer.frameAt(i.toLong()))
+        }
+        val bundle = asm.bundle()
+        assertNotNull(bundle)
+        assertArrayEquals(data, bundle)
+    }
 }

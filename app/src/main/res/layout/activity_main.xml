@@ -27,6 +27,11 @@
         android:text="@string/send_files" />
 
     <Button
+        android:id="@+id/btnSendFolder"
+        style="@style/BigButton"
+        android:text="@string/send_folder" />
+
+    <Button
         android:id="@+id/btnSendText"
         style="@style/BigButton"
         android:text="@string/send_text" />

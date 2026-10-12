@@ -70,6 +70,8 @@ class QrScanner(
     // Camera capabilities, read in open()
     private var afMode = CaptureRequest.CONTROL_AF_MODE_OFF
     private var ois = false
+    private var hasTorch = false
+    @Volatile private var torchOn = false
     private var fpsRange: Range<Int>? = null
     private var targets: List<Surface> = emptyList()
 
@@ -104,6 +106,7 @@ class QrScanner(
         if (!running) return
         running = false
         focusLocked = false
+        torchOn = false
         val h = camHandler
         h?.removeCallbacks(autoUnlock)
         val ct = camThread
@@ -141,6 +144,7 @@ class QrScanner(
             }
             ois = chars.get(CameraCharacteristics.LENS_INFO_AVAILABLE_OPTICAL_STABILIZATION)
                 ?.contains(CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_ON) == true
+            hasTorch = chars.get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
             // Highest fixed-ish range up to 30 fps, e.g. [30,30]: short exposures, less blur.
             fpsRange = chars.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES)
                 ?.filter { it.upper <= 30 }
@@ -203,8 +207,32 @@ class QrScanner(
             set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO)
             set(CaptureRequest.CONTROL_AF_MODE, afMode)
             if (ois) set(CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE, CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_ON)
+            if (hasTorch && torchOn) {
+                set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_TORCH)
+            } else {
+                set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF)
+            }
             fpsRange?.let { set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, it) }
         }
+
+    fun hasFlash(): Boolean = hasTorch
+
+    val isTorchOn: Boolean get() = torchOn
+
+    fun toggleTorch(callback: (Boolean) -> Unit) {
+        if (!hasTorch || !running) return
+        torchOn = !torchOn
+        camHandler?.post {
+            val s = session
+            val d = device
+            if (s != null && d != null) {
+                try {
+                    s.setRepeatingRequest(request(d).build(), null, camHandler)
+                } catch (_: Exception) {}
+            }
+            main.post { callback(torchOn) }
+        }
+    }
 
     /** Tap-to-refocus: unlock and let continuous AF search again; it re-locks on the next decode. */
     fun refocus() {

@@ -23,6 +23,10 @@ class Link(
     private val resource: Closeable,
     /** DATA payload size that suits this link (see Protocol.send). */
     val chunk: Int = Protocol.DEFAULT_CHUNK,
+    /** Unacknowledged bytes in flight limit for flow control. */
+    val window: Long = Protocol.WINDOW,
+    /** Frequency of ACK frames from the receiver. */
+    val ackEvery: Long = Protocol.ACK_EVERY,
     /** Extra info for the status line. */
     val detail: String = "",
 ) : Closeable {
@@ -35,6 +39,11 @@ const val TRANSPORT_LAN = "Wi-Fi/LAN"
 const val TRANSPORT_BT = "Bluetooth"
 const val TRANSPORT_WIFI_DIRECT = "Wi-Fi Direct"
 const val TRANSPORT_WIFI = "Wi-Fi"
+
+/** Adaptive parameters for fast TCP links (LAN / Wi-Fi Direct). */
+const val LAN_CHUNK = 128 * 1024
+const val LAN_WINDOW = 1024 * 1024L
+const val LAN_ACK_EVERY = 128 * 1024L
 
 object Lan {
     /** IPv4 addresses of every active non-loopback interface (Wi-Fi, hotspot, Ethernet, USB tethering…). */
@@ -61,7 +70,7 @@ class LanServer(private val onLink: (Link) -> Unit) {
                 val s = try { server.accept() } catch (e: IOException) { break }
                 s.tcpNoDelay = true
                 s.soTimeout = 30_000
-                onLink(Link(TRANSPORT_LAN, s.getInputStream(), s.getOutputStream(), s))
+                onLink(Link(TRANSPORT_LAN, s.getInputStream(), s.getOutputStream(), s, chunk = LAN_CHUNK, window = LAN_WINDOW, ackEvery = LAN_ACK_EVERY))
             }
         }
     }
@@ -104,7 +113,7 @@ class LanClient(
                         s.soTimeout = 30_000
                         if (stopped.get()) { s.close(); return@thread }
                         succeeded.set(true)
-                        onLink(Link(transport, s.getInputStream(), s.getOutputStream(), wrap(s)))
+                        onLink(Link(transport, s.getInputStream(), s.getOutputStream(), wrap(s), chunk = LAN_CHUNK, window = LAN_WINDOW, ackEvery = LAN_ACK_EVERY))
                         return@thread
                     } catch (e: IOException) {
                         try { s.close() } catch (_: IOException) {}

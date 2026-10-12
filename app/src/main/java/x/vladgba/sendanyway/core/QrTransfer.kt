@@ -110,7 +110,7 @@ class QrSlicer(private val bundle: ByteArray, val chunkSize: Int) {
 
     companion object {
         const val HEADER = 16
-        const val MAX_CHUNK = 2800
+        const val MAX_CHUNK = 2900
         private val DEGREES = intArrayOf(2, 3, 4, 6, 8, 12, 16, 32)
 
         /** First pass: all sources. Then alternate source (cycling) and a fresh repair frame. */
