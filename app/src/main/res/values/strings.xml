@@ -30,6 +30,13 @@
     <string name="received_label">Received</string>
     <string name="ch_lan">Wi-Fi / LAN</string>
     <string name="ch_lan_off">Not connected to a network</string>
+    <string name="ch_p2p">Internet P2P</string>
+    <string name="ch_p2p_off">No internet connection</string>
+    <string name="ch_p2p_starting">Contacting the rendezvous server…</string>
+    <string name="ch_p2p_waiting">Ready: works across networks and mobile data</string>
+    <string name="ch_p2p_connecting">Other phone found, opening a direct path…</string>
+    <string name="ch_p2p_busy">Rendezvous busy, retrying…</string>
+    <string name="ch_p2p_error">Server unreachable (%1$s), retrying…</string>
     <string name="ch_bt">Bluetooth</string>
     <string name="ch_bt_visible">Visible to nearby phones</string>
     <string name="ch_bt_hidden">Not visible: only phones paired before can find it</string>

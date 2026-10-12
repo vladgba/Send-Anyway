@@ -1,7 +1,7 @@
 # Send Anyway
 
 Send files and text between two Android phones by whatever channel works:
-**Wi-Fi/LAN → Bluetooth → QR slideshow.** Pairing is always a QR code.
+**Wi-Fi/LAN → Internet P2P → Bluetooth → QR slideshow.** Pairing is always a QR code.
 
 - Kotlin, Android framework APIs only (no AndroidX, no Compose, no CameraX, no coroutines)
 - One runtime library: [`com.google.zxing:core`](https://github.com/zxing/zxing) for QR encode/decode
@@ -21,6 +21,7 @@ Send files and text between two Android phones by whatever channel works:
 |---|---|---|
 | Wi-Fi / LAN | IPv4 addresses + port inside the pairing QR | TCP |
 | Wi-Fi Direct | Sender taps **Start Wi-Fi Direct** and owns a P2P group (Android 10+: app-chosen name/password, pinned to 2.4 GHz); name + password go into the QR. Receiver (Android 10+) joins with `WifiP2pManager.connect(WifiP2pConfig(networkName, passphrase))`, no dialog. Fallback on any version: join `DIRECT-…` in Wi-Fi settings, a network watcher connects | TCP to group owner 192.168.49.1 |
+| Internet P2P | Both phones register with a rendezvous script (`hole-punch.php`) under a room = SHA-256 of the session key, learn their public UDP endpoint by STUN, and punch through their NATs. Offered when the phone has an internet-capable network; not possible behind symmetric NATs | Reliable UDP stream (selective-repeat ARQ, SACK, AIMD) |
 | Bluetooth (RFCOMM) | Sender asks to become discoverable (system prompt) and listens on a per-session RFCOMM UUID; receiver runs classic discovery and tries phones strongest-signal first (then previously paired ones) | Insecure RFCOMM |
 | QR slideshow | — (frames are self-describing) | Camera, one-way |
 
@@ -55,7 +56,8 @@ app/src/main/java/x/vladgba/sendanyway/
 │   ├── Protocol.kt      HELLO / OFFER / ACCEPT / DATA / ITEM_END / DONE
 │   ├── Items.kt         ItemInfo, OutgoingItem, ReceiveSink
 │   └── QrTransfer.kt    QrBundle (deflate), QrSlicer, QrAssembler
-├── transport/       Lan.kt (TCP), Classic.kt (Bluetooth RFCOMM), Bluetooth.kt (permissions), WifiDirect.kt (P2P group + manual-join watcher)
+├── transport/       Lan.kt (TCP), Classic.kt (Bluetooth RFCOMM), Bluetooth.kt (permissions), WifiDirect.kt (P2P group + manual-join watcher),
+│                    P2p.kt (STUN + rendezvous + hole punching), UdpStream.kt (reliable stream over UDP)
 ├── qr/              QrRender (ZXing → Bitmap), QrScanner (camera2 → ZXing)
 ├── data/            UriItem (content:// input), DownloadSink (→ Download/SendAnyway)
 └── ui/              MainActivity, SendActivity, ReceiveActivity
@@ -64,7 +66,12 @@ app/src/main/java/x/vladgba/sendanyway/
 ## Wire formats
 
 **Pairing QR** — `A5 01 ver | sessionId[8] | key[32] | flags | name | port u16 | n | (len, addr)… | [groupName, passphrase]`
-(flags: bit0 Bluetooth RFCOMM, bit1 Wi-Fi Direct group)
+(flags: bit0 Bluetooth RFCOMM, bit1 Wi-Fi Direct group, bit2 internet P2P)
+
+**P2P datagrams** (one UDP socket per side, also used for STUN) — `53 41 type | …`:
+`PUNCH`/`PUNCH_ACK` `id[16] | HMAC-SHA256(key, "SendAnyway/p2p-punch" ‖ id)[16]` (unauthenticated sources are ignored);
+`DATA`/`FIN` `seq u32 | payload ≤ 1180`; `ACK` `next u32 | SACK u64`; `KEEPALIVE` every 4 s. The stream carries the same
+`SecureChannel` frames as TCP, so the content stays AES-GCM encrypted end to end; the rendezvous server only sees the room hash and endpoints.
 
 **Slideshow frame** — `A5 02 | crc32 u32 | bundleLen u32 | chunkSize u16 | seq u32 | bytes…`
 `seq < K` is source chunk `seq`; `seq ≥ K` is a repair chunk: XOR of 2–32 source chunks picked from (seq, crc) by a shared PRNG. After one full pass the sender alternates source and repair frames; the receiver rebuilds missing chunks by peeling (any repair with one unknown chunk reveals it). Every frame is decoded in memory before display and re-encoded with another QR mask if ZXing can't read it.
@@ -89,7 +96,8 @@ Open the folder in Android Studio, or:
 
 ```
 ./gradlew assembleDebug          # app/build/outputs/apk/debug/app-debug.apk
-./gradlew testDebugUnitTest      # protocol, crypto, QR round-trip tests
+./gradlew testDebugUnitTest      # protocol, crypto, QR round-trip, reliable-UDP tests
+P2P_IT=1 ./gradlew testDebugUnitTest   # + real STUN / rendezvous / hole-punch test (needs internet)
 ```
 
 ## Status / next steps

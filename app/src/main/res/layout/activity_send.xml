@@ -42,6 +42,17 @@
         </LinearLayout>
     </LinearLayout>
 
+    <!-- QR slideshow: edge to edge, no card / padding / background, pinned above the
+         scrolling content so it stays fully visible while the sliders are adjusted.
+         Its size is set in code (largest square that fits). -->
+    <ImageView
+        android:id="@+id/qrSlides"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/scan_this"
+        android:scaleType="fitCenter"
+        android:visibility="gone" />
+
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"

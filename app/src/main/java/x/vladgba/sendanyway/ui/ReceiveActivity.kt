@@ -43,6 +43,8 @@ import x.vladgba.sendanyway.transport.Bluetooth
 import x.vladgba.sendanyway.transport.ClassicClient
 import x.vladgba.sendanyway.transport.LanClient
 import x.vladgba.sendanyway.transport.Link
+import x.vladgba.sendanyway.transport.P2p
+import x.vladgba.sendanyway.transport.P2pPeer
 import x.vladgba.sendanyway.transport.WifiDirect
 import x.vladgba.sendanyway.transport.WifiDirectClient
 import x.vladgba.sendanyway.transport.WifiWatcher
@@ -79,6 +81,7 @@ class ReceiveActivity : Activity() {
     private var lanClient: LanClient? = null
     private var classicClient: ClassicClient? = null
     private var directClient: WifiDirectClient? = null
+    private var p2pPeer: P2pPeer? = null
     private var wifiWatcher: WifiWatcher? = null
     private lateinit var btnWifi: Button
     private lateinit var qrMap: QrMapView
@@ -342,6 +345,11 @@ class ReceiveActivity : Activity() {
         }
 
         var timeout = CONNECT_TIMEOUT_MS
+        // Internet P2P runs in parallel with everything else; whichever link authenticates first wins.
+        if (p.internet && P2p.hasInternet(this)) {
+            p2pPeer = runCatching { P2pPeer(p.key, { onLink(p, it) }).start() }.getOrNull()
+            timeout = maxOf(timeout, P2P_TIMEOUT_MS)
+        }
         if (group != null) {
             timeout = WIFI_DIRECT_TIMEOUT_MS
             // Always watch for Wi-Fi networks: covers joining "DIRECT-…" by hand on any Android version.
@@ -410,6 +418,7 @@ class ReceiveActivity : Activity() {
         classicClient?.stop(); classicClient = null
         directClient?.stop(); directClient = null
         wifiWatcher?.stop(); wifiWatcher = null
+        p2pPeer?.stop(); p2pPeer = null
     }
 
     // ---- direct transfer --------------------------------------------------------------------
@@ -685,6 +694,8 @@ class ReceiveActivity : Activity() {
         const val REQ_PERMS = 1
         const val CONNECT_TIMEOUT_MS = 15_000L
         const val WIFI_DIRECT_TIMEOUT_MS = 45_000L
+        /** STUN + rendezvous polling + punching: a few seconds more than a LAN attempt. */
+        const val P2P_TIMEOUT_MS = 30_000L
         const val MATCH = LinearLayout.LayoutParams.MATCH_PARENT
         const val WRAP = LinearLayout.LayoutParams.WRAP_CONTENT
     }

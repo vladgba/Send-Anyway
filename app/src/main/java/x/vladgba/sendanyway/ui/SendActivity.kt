@@ -40,6 +40,8 @@ import x.vladgba.sendanyway.transport.ClassicServer
 import x.vladgba.sendanyway.transport.Lan
 import x.vladgba.sendanyway.transport.LanServer
 import x.vladgba.sendanyway.transport.Link
+import x.vladgba.sendanyway.transport.P2p
+import x.vladgba.sendanyway.transport.P2pPeer
 import x.vladgba.sendanyway.transport.WifiDirect
 import x.vladgba.sendanyway.transport.WifiDirectHost
 import java.io.IOException
@@ -57,6 +59,7 @@ class SendActivity : Activity() {
     private lateinit var myName: String
 
     private lateinit var qrView: ImageView
+    private lateinit var qrSlides: ImageView
     private lateinit var status: TextView
     private lateinit var channels: TextView
     private lateinit var progress: ProgressBar
@@ -86,6 +89,10 @@ class SendActivity : Activity() {
     private lateinit var btnDirect: Button
     private lateinit var directView: TextView
     private var lan: LanServer? = null
+    private var lanText = ""
+    private var p2p: P2pPeer? = null
+    private var p2pState: P2pPeer.State? = null
+    private var p2pDetail = ""
     private val claimed = AtomicBoolean(false)
     @Volatile private var activeLink: Link? = null
     @Volatile private var closed = false
@@ -102,7 +109,7 @@ class SendActivity : Activity() {
             val s = slicer ?: return
             if (!slideshow) return
             try {
-                QrRender.show(qrView, QrRender.encode(s.frameAt(frameIndex), ErrorCorrectionLevel.L))
+                QrRender.show(qrSlides, QrRender.encode(s.frameAt(frameIndex), ErrorCorrectionLevel.L))
             } catch (e: Exception) {
                 showError(e)
                 return
@@ -116,6 +123,7 @@ class SendActivity : Activity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_send)
         qrView = findViewById(R.id.qr)
+        qrSlides = findViewById(R.id.qrSlides)
         status = findViewById(R.id.status)
         channels = findViewById(R.id.channels)
         progress = findViewById(R.id.progress)
@@ -150,6 +158,10 @@ class SendActivity : Activity() {
         // Screen gutter (16dp) + card padding (20dp) on each side.
         val side = minOf(dm.widthPixels - dp(72), (dm.heightPixels * 0.5).toInt())
         qrView.layoutParams = qrView.layoutParams.apply { width = side; height = side }
+        // Slideshow frames: as big as possible. Full screen width, edge to edge; only on very wide
+        // screens is it capped by height, leaving room for the top bar and the slideshow controls.
+        val slideSide = minOf(dm.widthPixels, dm.heightPixels - dp(240))
+        qrSlides.layoutParams = qrSlides.layoutParams.apply { height = slideSide }
 
         setupSlideshowControls()
         btnMode.setOnClickListener { if (slideshow) showPairing() else startSlideshow() }
@@ -273,6 +285,20 @@ class SendActivity : Activity() {
         sessionId = id
         key = k
         lan = try { LanServer(::onLink).also { it.start() } } catch (e: IOException) { null }
+        // Internet P2P: only offered (pairing flag) when this phone can actually reach the internet.
+        if (P2p.hasInternet(this)) {
+            p2p = try {
+                P2pPeer(k, ::onLink, onState = { state, detail ->
+                    ui {
+                        if (!closed && !claimed.get()) {
+                            p2pState = state
+                            p2pDetail = detail
+                            renderChannels()
+                        }
+                    }
+                }).start()
+            } catch (e: IOException) { null }
+        }
         val base = Pairing(id, k, myName, lan?.port ?: 0, emptyList(), bluetooth = false)
         val rfcomm = ClassicServer(this, base.rfcommUuid, ::onLink)
         classic = rfcomm.start()
@@ -284,7 +310,7 @@ class SendActivity : Activity() {
                 startActivityForResult(Classic.discoverableIntent(), REQ_DISCOVERABLE)
             } catch (_: Exception) {}
         }
-        basePairing = Pairing(id, k, myName, lan?.port ?: 0, emptyList(), bluetooth = classic)
+        basePairing = Pairing(id, k, myName, lan?.port ?: 0, emptyList(), bluetooth = classic, internet = p2p != null)
         refreshPairing()
     }
 
@@ -294,15 +320,18 @@ class SendActivity : Activity() {
         val addrs = if (lan != null) Lan.localIpv4() else emptyList()
         pairingQr = base.withWifiGroup(wifiGroup, addrs.map { it.address }).encode()
 
-        renderChannels(addrs.joinToString { it.hostAddress ?: "" })
+        lanText = addrs.joinToString { it.hostAddress ?: "" }
+        renderChannels()
         if (!slideshow && !claimed.get()) showPairing()
     }
 
     /** Fills the "Channels" card: one row per way the receiver can reach us, with an on/off dot. */
-    private fun renderChannels(lanAddrs: String) {
+    private fun renderChannels() {
         channelList.removeAllViews()
         channelList.addView(channelRow(R.drawable.ic_wifi, R.string.ch_lan,
-            lanAddrs.ifEmpty { getString(R.string.ch_lan_off) }, lanAddrs.isNotEmpty()))
+            lanText.ifEmpty { getString(R.string.ch_lan_off) }, lanText.isNotEmpty()))
+        val p2pOn = p2p != null && p2pState in setOf(P2pPeer.State.WAITING, P2pPeer.State.CONNECTING, P2pPeer.State.CONNECTED)
+        channelList.addView(channelRow(R.drawable.ic_public, R.string.ch_p2p, p2pText(), p2pOn))
         if (WifiDirect.supported(this)) {
             val g = wifiGroup
             channelList.addView(channelRow(R.drawable.ic_wifi, R.string.ch_direct,
@@ -315,6 +344,17 @@ class SendActivity : Activity() {
                 else -> R.string.ch_bt_hidden
             }), classic))
         channelList.addView(channelRow(R.drawable.ic_slideshow, R.string.ch_qr, getString(R.string.ch_qr_desc), true))
+    }
+
+    private fun p2pText(): String = when {
+        p2p == null -> getString(R.string.ch_p2p_off)
+        else -> when (p2pState) {
+            null, P2pPeer.State.STARTING -> getString(R.string.ch_p2p_starting)
+            P2pPeer.State.WAITING -> getString(R.string.ch_p2p_waiting)
+            P2pPeer.State.CONNECTING, P2pPeer.State.CONNECTED -> getString(R.string.ch_p2p_connecting)
+            P2pPeer.State.BUSY -> getString(R.string.ch_p2p_busy)
+            P2pPeer.State.ERROR -> getString(R.string.ch_p2p_error, p2pDetail)
+        }
     }
 
     private fun channelRow(icon: Int, title: Int, detail: String, on: Boolean): View {
@@ -438,6 +478,7 @@ class SendActivity : Activity() {
 
     private fun stopListeners() {
         lan?.stop()
+        p2p?.stop()
         classicServer?.stop()
     }
 
@@ -454,6 +495,7 @@ class SendActivity : Activity() {
         qrScreenMode(false)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         qrView.visibility = View.GONE
+        qrSlides.visibility = View.GONE
         controls.visibility = View.GONE
         btnMode.visibility = View.GONE
         btnDirect.visibility = View.GONE
@@ -510,6 +552,7 @@ class SendActivity : Activity() {
         btnMode.setText(R.string.use_qr_slideshow)
         status.setText(R.string.scan_this)
         statusIcon.visibility = View.GONE
+        qrSlides.visibility = View.GONE
         qrView.visibility = View.VISIBLE
         qrView.post { QrRender.show(qrView, QrRender.encode(qr, ErrorCorrectionLevel.M)) }
     }
@@ -518,6 +561,7 @@ class SendActivity : Activity() {
     private fun showError(e: Exception) {
         status.text = getString(R.string.failed, e.message ?: e.toString())
         qrView.visibility = View.GONE
+        qrSlides.visibility = View.GONE
         statusIcon.visibility = View.VISIBLE
         statusIcon.showTone(Tone.ERROR)
     }
@@ -551,7 +595,8 @@ class SendActivity : Activity() {
         }
         status.text = text
         statusIcon.visibility = View.GONE
-        qrView.visibility = View.VISIBLE
+        qrView.visibility = View.GONE
+        qrSlides.visibility = View.VISIBLE
         mainHandler.removeCallbacks(tick)
         mainHandler.post(tick)
     }
